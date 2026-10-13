@@ -1,0 +1,1846 @@
+﻿[
+    {
+        "Dialog":  101,
+        "Title":  "Dialog",
+        "Menu":  "",
+        "Count":  37,
+        "Controls":  [
+                         {
+                             "ID":  1010,
+                             "Class":  "ordinal:128",
+                             "Title":  " =\u003e",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          242,
+                                          115,
+                                          22,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1001,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50a10903",
+                             "Rect":  [
+                                          16,
+                                          58,
+                                          57,
+                                          125
+                                      ]
+                         },
+                         {
+                             "ID":  1000,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50a10903",
+                             "Rect":  [
+                                          83,
+                                          58,
+                                          113,
+                                          125
+                                      ]
+                         },
+                         {
+                             "ID":  1003,
+                             "Class":  "ordinal:133",
+                             "Title":  "",
+                             "Style":  "0x50210102",
+                             "Rect":  [
+                                          15,
+                                          209,
+                                          58,
+                                          48
+                                      ]
+                         },
+                         {
+                             "ID":  1002,
+                             "Class":  "ordinal:133",
+                             "Title":  "",
+                             "Style":  "0x50210102",
+                             "Rect":  [
+                                          85,
+                                          209,
+                                          112,
+                                          48
+                                      ]
+                         },
+                         {
+                             "ID":  1008,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50a10903",
+                             "Rect":  [
+                                          279,
+                                          57,
+                                          57,
+                                          125
+                                      ]
+                         },
+                         {
+                             "ID":  1004,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50a10903",
+                             "Rect":  [
+                                          347,
+                                          57,
+                                          113,
+                                          125
+                                      ]
+                         },
+                         {
+                             "ID":  1007,
+                             "Class":  "ordinal:133",
+                             "Title":  "",
+                             "Style":  "0x50210102",
+                             "Rect":  [
+                                          279,
+                                          209,
+                                          58,
+                                          48
+                                      ]
+                         },
+                         {
+                             "ID":  1006,
+                             "Class":  "ordinal:133",
+                             "Title":  "",
+                             "Style":  "0x50210102",
+                             "Rect":  [
+                                          349,
+                                          209,
+                                          112,
+                                          48
+                                      ]
+                         },
+                         {
+                             "ID":  1,
+                             "Class":  "ordinal:128",
+                             "Title":  "Finish",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          199,
+                                          251,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  2,
+                             "Class":  "ordinal:128",
+                             "Title":  "Cancel",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          266,
+                                          251,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1033,
+                             "Class":  "ordinal:128",
+                             "Title":  "ChgDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          202,
+                                          59,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1034,
+                             "Class":  "ordinal:128",
+                             "Title":  "MkDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          202,
+                                          75,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1035,
+                             "Class":  "ordinal:128",
+                             "Title":  "RmDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          202,
+                                          91,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1036,
+                             "Class":  "ordinal:128",
+                             "Title":  "View",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          202,
+                                          138,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1037,
+                             "Class":  "ordinal:128",
+                             "Title":  "Rename",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          202,
+                                          154,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1038,
+                             "Class":  "ordinal:128",
+                             "Title":  "Delete",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          202,
+                                          170,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1039,
+                             "Class":  "ordinal:128",
+                             "Title":  "ChgDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          58,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1040,
+                             "Class":  "ordinal:128",
+                             "Title":  "MkDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          74,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1041,
+                             "Class":  "ordinal:128",
+                             "Title":  "RmDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          90,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1042,
+                             "Class":  "ordinal:128",
+                             "Title":  "View",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          137,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1043,
+                             "Class":  "ordinal:128",
+                             "Title":  "Rename",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          153,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1044,
+                             "Class":  "ordinal:128",
+                             "Title":  "Delete",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          169,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1005,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          48,
+                                          24,
+                                          148,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Directories",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          19,
+                                          41,
+                                          55,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          86,
+                                          40,
+                                          108,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Path",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          22,
+                                          25,
+                                          22,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Drive",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          32,
+                                          198,
+                                          25,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Type of files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          105,
+                                          198,
+                                          46,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "INPUT",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          7,
+                                          14,
+                                          230,
+                                          222
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Directories",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          283,
+                                          41,
+                                          55,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          349,
+                                          40,
+                                          108,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  1009,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          311,
+                                          24,
+                                          148,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Path",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          285,
+                                          25,
+                                          22,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Drive",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          295,
+                                          198,
+                                          25,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Type of output files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          369,
+                                          198,
+                                          46,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "OUTPUT",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          269,
+                                          14,
+                                          228,
+                                          222
+                                      ]
+                         }
+                     ]
+    },
+    {
+        "Dialog":  102,
+        "Title":  "HEADING",
+        "Menu":  "",
+        "Count":  27,
+        "Controls":  [
+                         {
+                             "ID":  1,
+                             "Class":  "ordinal:128",
+                             "Title":  "Yes",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          71,
+                                          170,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  2,
+                             "Class":  "ordinal:128",
+                             "Title":  "Yes to all",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          132,
+                                          170,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1011,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          32,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1012,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          44,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1013,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          56,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1014,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          68,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1015,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          80,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1016,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          92,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1017,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          104,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1018,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          116,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1019,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          128,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1020,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          140,
+                                          157,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1021,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          97,
+                                          153,
+                                          41,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1022,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          212,
+                                          153,
+                                          41,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Sample",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          13,
+                                          34,
+                                          28,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Particle Type",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          13,
+                                          46,
+                                          65,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Incident Energy (MeV)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          58,
+                                          75,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Current (nA)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          69,
+                                          63,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Incident Angle (°)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          81,
+                                          71,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Preset Charge (µC)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          93,
+                                          70,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Detector Type",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          105,
+                                          69,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Detector Angle (°)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          117,
+                                          69,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Detector Omega (msr)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          130,
+                                          71,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Detector Resolution (keV)",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          142,
+                                          82,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1031,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50914103",
+                             "Rect":  [
+                                          13,
+                                          13,
+                                          216,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Start Channel",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          155,
+                                          49,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Stop Channel",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          160,
+                                          155,
+                                          49,
+                                          10
+                                      ]
+                         }
+                     ]
+    },
+    {
+        "Dialog":  103,
+        "Title":  "Set path",
+        "Menu":  "",
+        "Count":  16,
+        "Controls":  [
+                         {
+                             "ID":  1,
+                             "Class":  "ordinal:128",
+                             "Title":  "OK",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          65,
+                                          149,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1032,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          70,
+                                          18,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1033,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          70,
+                                          35,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1034,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          70,
+                                          52,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1035,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          70,
+                                          74,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1036,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          70,
+                                          90,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1037,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          70,
+                                          108,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1038,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          71,
+                                          126,
+                                          154,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  2,
+                             "Class":  "ordinal:128",
+                             "Title":  "Cancel",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          134,
+                                          149,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Input path",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          16,
+                                          20,
+                                          45,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Output path",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          15,
+                                          37,
+                                          45,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "path for ini files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          54,
+                                          52,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Ini file for RBS",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          15,
+                                          76,
+                                          52,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Ini file for ERD",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          14,
+                                          92,
+                                          52,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Ini file for NRA",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          16,
+                                          109,
+                                          52,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Exp. ini file",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          15,
+                                          127,
+                                          52,
+                                          10
+                                      ]
+                         }
+                     ]
+    },
+    {
+        "Dialog":  106,
+        "Title":  "",
+        "Menu":  "",
+        "Count":  4,
+        "Controls":  [
+                         {
+                             "ID":  1035,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          18,
+                                          34,
+                                          152,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1,
+                             "Class":  "ordinal:128",
+                             "Title":  "OK",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          37,
+                                          54,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  2,
+                             "Class":  "ordinal:128",
+                             "Title":  "Cancel",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          105,
+                                          54,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1034,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          18,
+                                          19,
+                                          152,
+                                          12
+                                      ]
+                         }
+                     ]
+    },
+    {
+        "Dialog":  108,
+        "Title":  "Dialog",
+        "Menu":  "",
+        "Count":  4,
+        "Controls":  [
+                         {
+                             "ID":  6,
+                             "Class":  "ordinal:128",
+                             "Title":  "Yes",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          8,
+                                          41,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  7,
+                             "Class":  "ordinal:128",
+                             "Title":  "No",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          69,
+                                          41,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  8,
+                             "Class":  "ordinal:128",
+                             "Title":  "Yes to all",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          127,
+                                          41,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1047,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          21,
+                                          18,
+                                          148,
+                                          14
+                                      ]
+                         }
+                     ]
+    },
+    {
+        "Dialog":  109,
+        "Title":  "Convert options",
+        "Menu":  "",
+        "Count":  37,
+        "Controls":  [
+                         {
+                             "ID":  1048,
+                             "Class":  "ordinal:128",
+                             "Title":  "Full spectrum",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          38,
+                                          37,
+                                          53,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1049,
+                             "Class":  "ordinal:128",
+                             "Title":  "First points",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          37,
+                                          54,
+                                          53,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1071,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          69,
+                                          66,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1050,
+                             "Class":  "ordinal:128",
+                             "Title":  "Roi",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          37,
+                                          84,
+                                          27,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1051,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          69,
+                                          96,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1052,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          69,
+                                          112,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1053,
+                             "Class":  "ordinal:128",
+                             "Title":  "Full spectrum",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          155,
+                                          37,
+                                          53,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1054,
+                             "Class":  "ordinal:128",
+                             "Title":  "First points",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          154,
+                                          54,
+                                          50,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1056,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          186,
+                                          66,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1055,
+                             "Class":  "ordinal:128",
+                             "Title":  "Roi",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          154,
+                                          84,
+                                          27,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1057,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          186,
+                                          96,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1058,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          186,
+                                          112,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1059,
+                             "Class":  "ordinal:128",
+                             "Title":  "Full spectrum",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          270,
+                                          37,
+                                          53,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1060,
+                             "Class":  "ordinal:128",
+                             "Title":  "First points",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          269,
+                                          54,
+                                          60,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1062,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          301,
+                                          66,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1061,
+                             "Class":  "ordinal:128",
+                             "Title":  "Roi",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          269,
+                                          84,
+                                          27,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1063,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          301,
+                                          96,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1064,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          301,
+                                          112,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1,
+                             "Class":  "ordinal:128",
+                             "Title":  "OK",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          234,
+                                          145,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Min",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          48,
+                                          98,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Max",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          48,
+                                          115,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "RBS",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          35,
+                                          21,
+                                          98,
+                                          114
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Min",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          165,
+                                          98,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Max",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          165,
+                                          115,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "ERD",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          152,
+                                          21,
+                                          98,
+                                          114
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Min",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          280,
+                                          98,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Max",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          280,
+                                          115,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "NRA",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          267,
+                                          21,
+                                          98,
+                                          114
+                                      ]
+                         },
+                         {
+                             "ID":  1065,
+                             "Class":  "ordinal:128",
+                             "Title":  "Respect file",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          384,
+                                          37,
+                                          53,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1066,
+                             "Class":  "ordinal:128",
+                             "Title":  "User",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          384,
+                                          54,
+                                          31,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1067,
+                             "Class":  "ordinal:128",
+                             "Title":  "Roi",
+                             "Style":  "0x50000009",
+                             "Rect":  [
+                                          384,
+                                          84,
+                                          27,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  1068,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          416,
+                                          65,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1069,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          416,
+                                          96,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1070,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          416,
+                                          112,
+                                          42,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Min",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          394,
+                                          97,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Max",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          394,
+                                          115,
+                                          17,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "Other",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          382,
+                                          21,
+                                          98,
+                                          114
+                                      ]
+                         }
+                     ]
+    },
+    {
+        "Dialog":  110,
+        "Title":  "Dialog",
+        "Menu":  "",
+        "Count":  24,
+        "Controls":  [
+                         {
+                             "ID":  1006,
+                             "Class":  "ordinal:133",
+                             "Title":  "",
+                             "Style":  "0x50210102",
+                             "Rect":  [
+                                          349,
+                                          209,
+                                          112,
+                                          48
+                                      ]
+                         },
+                         {
+                             "ID":  1008,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50a10903",
+                             "Rect":  [
+                                          282,
+                                          56,
+                                          57,
+                                          125
+                                      ]
+                         },
+                         {
+                             "ID":  1004,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50a10903",
+                             "Rect":  [
+                                          347,
+                                          57,
+                                          113,
+                                          125
+                                      ]
+                         },
+                         {
+                             "ID":  1007,
+                             "Class":  "ordinal:133",
+                             "Title":  "",
+                             "Style":  "0x50210102",
+                             "Rect":  [
+                                          279,
+                                          209,
+                                          58,
+                                          48
+                                      ]
+                         },
+                         {
+                             "ID":  1010,
+                             "Class":  "ordinal:128",
+                             "Title":  " =\u003e",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          242,
+                                          115,
+                                          22,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1039,
+                             "Class":  "ordinal:128",
+                             "Title":  "ChgDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          60,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1040,
+                             "Class":  "ordinal:128",
+                             "Title":  "MkDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          74,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1041,
+                             "Class":  "ordinal:128",
+                             "Title":  "RmDir",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          90,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1042,
+                             "Class":  "ordinal:128",
+                             "Title":  "View",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          137,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1043,
+                             "Class":  "ordinal:128",
+                             "Title":  "Rename",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          153,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1044,
+                             "Class":  "ordinal:128",
+                             "Title":  "Delete",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          464,
+                                          169,
+                                          29,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  1072,
+                             "Class":  "ordinal:128",
+                             "Title":  "Param. conv.",
+                             "Style":  "0x50010000",
+                             "Rect":  [
+                                          125,
+                                          252,
+                                          63,
+                                          13
+                                      ]
+                         },
+                         {
+                             "ID":  1,
+                             "Class":  "ordinal:128",
+                             "Title":  "Finish",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          199,
+                                          251,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  2,
+                             "Class":  "ordinal:128",
+                             "Title":  "Cancel",
+                             "Style":  "0x50010001",
+                             "Rect":  [
+                                          266,
+                                          251,
+                                          50,
+                                          14
+                                      ]
+                         },
+                         {
+                             "ID":  1000,
+                             "Class":  "ordinal:131",
+                             "Title":  "",
+                             "Style":  "0x50b14103",
+                             "Rect":  [
+                                          14,
+                                          37,
+                                          217,
+                                          191
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          104,
+                                          24,
+                                          108,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "INPUT",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          7,
+                                          14,
+                                          230,
+                                          222
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Directories",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          283,
+                                          41,
+                                          55,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          349,
+                                          40,
+                                          108,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  1009,
+                             "Class":  "ordinal:129",
+                             "Title":  "",
+                             "Style":  "0x50810080",
+                             "Rect":  [
+                                          311,
+                                          24,
+                                          148,
+                                          12
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Path",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          285,
+                                          25,
+                                          22,
+                                          11
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Drive",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          295,
+                                          198,
+                                          25,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:130",
+                             "Title":  "Type of output files",
+                             "Style":  "0x50020000",
+                             "Rect":  [
+                                          369,
+                                          198,
+                                          46,
+                                          10
+                                      ]
+                         },
+                         {
+                             "ID":  65535,
+                             "Class":  "ordinal:128",
+                             "Title":  "OUTPUT",
+                             "Style":  "0x50000007",
+                             "Rect":  [
+                                          269,
+                                          14,
+                                          228,
+                                          222
+                                      ]
+                         }
+                     ]
+    }
+]

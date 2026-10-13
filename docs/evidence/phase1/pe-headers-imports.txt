@@ -1,0 +1,378 @@
+﻿
+C:\DEV\RUST\moulinette\res\moulinetteb.exe:	file format coff-i386
+Characteristics 0x10a
+	executable
+	symbols stripped
+	32 bit words
+
+Time/Date               Tue Mar 19 12:46:15 2002
+Magic                   010b	(PE32)
+MajorLinkerVersion      5
+MinorLinkerVersion      0
+SizeOfCode              00094c00
+SizeOfInitializedData   00301c00
+SizeOfUninitializedData 00000000
+AddressOfEntryPoint     000481b0
+BaseOfCode              00001000
+BaseOfData              00096000
+ImageBase               00400000
+SectionAlignment        00001000
+FileAlignment           00000200
+MajorOSystemVersion     4
+MinorOSystemVersion     0
+MajorImageVersion       0
+MinorImageVersion       0
+MajorSubsystemVersion   4
+MinorSubsystemVersion   0
+Win32Version            00000000
+SizeOfImage             0039b000
+SizeOfHeaders           00000400
+CheckSum                00000000
+Subsystem               00000002	(Windows GUI)
+DllCharacteristics      00000000
+SizeOfStackReserve      00100000
+SizeOfStackCommit       00001000
+SizeOfHeapReserve       00100000
+SizeOfHeapCommit        00001000
+LoaderFlags             00000000
+NumberOfRvaAndSizes     00000010
+
+The Data Directory
+Entry 0 00000000 00000000 Export Directory [.edata (or where ever we found it)]
+Entry 1 0038a000 00000064 Import Directory [parts of .idata]
+Entry 2 0038e000 00002498 Resource Directory [.rsrc]
+Entry 3 00000000 00000000 Exception Directory [.pdata]
+Entry 4 00000000 00000000 Security Directory
+Entry 5 00391000 00006d94 Base Relocation Directory [.reloc]
+Entry 6 00096000 00000054 Debug Directory
+Entry 7 00000000 00000000 Description Directory
+Entry 8 00000000 00000000 Special Directory
+Entry 9 00098108 00000018 Thread Storage Directory [.tls]
+Entry a 00000000 00000000 Load Configuration Directory
+Entry b 00000000 00000000 Bound Import Directory
+Entry c 0038a684 00000620 Import Address Table Directory
+Entry d 00000000 00000000 Delay Import Directory
+Entry e 00000000 00000000 CLR Runtime Header
+Entry f 00000000 00000000 Reserved
+TLS directory:
+  StartAddressOfRawData: 0x78d000
+  EndAddressOfRawData: 0x78d250
+  AddressOfIndex: 0x77e288
+  AddressOfCallBacks: 0x49a618
+  SizeOfZeroFill: 0
+  Characteristics: 0
+  Alignment: 0
+
+
+The Import Tables:
+  lookup 0038a44c time 00000000 fwd 00000000 name 0038b254 addr 0038aa6c
+
+    DLL Name: USER32.dll
+    Hint/Ord  Name
+           4  AppendMenuA
+         274  GetMenuState
+         275  GetMenuStringA
+          83  CreateMenu
+         131  DeleteMenu
+         296  GetSubMenu
+         332  InsertMenuA
+         270  GetMenuItemID
+          48  CheckMenuItem
+         269  GetMenuItemCount
+         176  EnableMenuItem
+         605  WaitMessage
+         474  SendMessageA
+         411  ModifyMenuA
+         443  PtInRect
+         314  GetWindowLongA
+         228  GetClientRect
+         507  SetMenu
+         405  MessageBoxA
+         433  PostMessageA
+         300  GetSystemMetrics
+         413  MoveWindow
+         542  SetWindowPos
+         557  ShowWindow
+         317  GetWindowRect
+         363  IsZoomed
+         327  HideCaret
+         356  IsIconic
+         552  ShowCaret
+         338  InvalidateRect
+         339  InvalidateRgn
+         469  ScrollDC
+          85  CreateWindowExA
+         593  UpdateWindow
+         124  DefFrameProcA
+         182  EndPaint
+         461  ReleaseDC
+         238  GetDC
+         257  GetKeyState
+           9  BeginPaint
+         359  IsWindow
+         144  DispatchMessageA
+         435  PostQuitMessage
+         184  EnumChildWindows
+         277  GetMessageA
+         581  TranslateMessage
+         580  TranslateMDISysAccel
+         545  SetWindowTextA
+         299  GetSystemMenu
+         612  wsprintfA
+         485  SetCaretPos
+          68  CreateCaret
+         134  DestroyCaret
+         370  LoadCursorA
+           7  AttachThreadInput
+         446  RegisterClassA
+         358  IsRectEmpty
+         337  IntersectRect
+         248  GetFocus
+          72  CreateDialogIndirectParamA
+         352  IsDialogMessageA
+         138  DestroyWindow
+         178  EnableWindow
+         500  SetDoubleClickTime
+         230  GetClipboardData
+         306  GetUpdateRect
+         362  IsWindowVisible
+         460  ReleaseCapture
+         417  OemToCharA
+         311  GetWindow
+         293  GetScrollPos
+         483  SetCapture
+         524  SetScrollRange
+         265  GetMenu
+         350  IsClipboardFormatAvailable
+         492  SetCursor
+         422  OpenClipboard
+         404  MessageBeep
+         501  SetFocus
+         489  SetClipboardData
+          56  CloseClipboard
+         175  EmptyClipboard
+         539  SetWindowLongA
+         470  ScrollWindow
+         523  SetScrollPos
+         606  WinHelpA
+         126  DefMDIChildProcA
+         128  DefWindowProcA
+         374  LoadIconA
+         431  PeekMessageA
+         137  DestroyMenu
+         166  DrawMenuBar
+         242  GetDlgCtrlID
+         243  GetDlgItem
+         180  EndDialog
+         142  DialogBoxParamA
+         360  IsWindowEnabled
+
+  lookup 0038a064 time 00000000 fwd 00000000 name 0038b5b8 addr 0038a684
+
+    DLL Name: GDI32.dll
+    Hint/Ord  Name
+         198  GetDIBits
+         280  LineTo
+         199  GetDeviceCaps
+         252  GetSystemPaletteEntries
+         337  SetBkMode
+         283  MoveToEx
+         383  StretchDIBits
+           0  AbortDoc
+         332  SetAbortProc
+         379  StartDocA
+         381  StartPage
+          77  EndPage
+          76  EndDoc
+         226  GetMapMode
+          65  DPtoLP
+         387  TextOutA
+         358  SetPaletteEntries
+         232  GetNearestColor
+          30  CreateCompatibleBitmap
+         359  SetPixel
+         361  SetPixelV
+         239  GetPaletteEntries
+          53  CreatePalette
+          26  CreateBitmapIndirect
+         331  SelectPalette
+         311  RealizePalette
+          10  BitBlt
+         366  SetStretchBltMode
+         233  GetNearestPaletteIndex
+         250  GetStockObject
+         363  SetROP2
+         328  SelectClipRgn
+         353  SetMapMode
+         376  SetWindowExtEx
+         372  SetViewportExtEx
+          31  CreateCompatibleDC
+         234  GetObjectA
+         382  StretchBlt
+          67  DeleteDC
+          37  CreateDIBitmap
+         370  SetTextColor
+         336  SetBkColor
+         267  GetTextMetricsA
+          98  ExtTextOutA
+          55  CreatePen
+         314  Rectangle
+          59  CreateRectRgn
+          64  CreateSolidBrush
+         290  PatBlt
+          70  DeleteObject
+          80  EnumFontFamiliesA
+          44  CreateFontIndirectA
+         330  SelectObject
+         241  GetPixel
+         143  GdiFlush
+
+  lookup 0038a648 time 00000000 fwd 00000000 name 0038b60e addr 0038ac68
+
+    DLL Name: comdlg32.dll
+    Hint/Ord  Name
+          16  PrintDlgA
+           4  CommDlgExtendedError
+          11  GetSaveFileNameA
+           9  GetOpenFileNameA
+
+  lookup 0038a198 time 00000000 fwd 00000000 name 0038bf7c addr 0038a7b8
+
+    DLL Name: KERNEL32.dll
+    Hint/Ord  Name
+         419  LockResource
+         457  RaiseException
+          56  CreateMutexA
+         287  GetProfileIntA
+         532  SetEvent
+         355  GlobalSize
+          85  DuplicateHandle
+         212  GetCurrentProcessId
+         577  SuspendThread
+         489  SearchPathA
+         673  lstrlenA
+         482  ResumeThread
+         341  GlobalAlloc
+         352  GlobalLock
+         667  lstrcpyA
+         348  GlobalFree
+          46  CreateEventA
+         358  GlobalUnlock
+         247  GetLocaleInfoW
+         246  GetLocaleInfoA
+         392  IsDBCSLeadByteEx
+          31  CompareStringW
+          30  CompareStringA
+         230  GetExitCodeProcess
+         395  IsValidCodePage
+         396  IsValidLocale
+         329  GetUserDefaultLCID
+         299  GetStringTypeA
+         309  GetSystemTime
+         302  GetStringTypeW
+         553  SetStdHandle
+         232  GetFileAttributesA
+         328  GetTimeZoneInformation
+         624  WriteConsoleA
+         603  VirtualAlloc
+         530  SetEnvironmentVariableW
+         397  LCMapStringA
+         115  FatalAppExitA
+         398  LCMapStringW
+          88  EnterCriticalSection
+         377  InitializeCriticalSection
+         399  LeaveCriticalSection
+         606  VirtualFree
+         362  HeapCreate
+         485  RtlUnwind
+         213  GetCurrentThread
+         585  TlsFree
+         364  HeapDestroy
+         539  SetHandleCount
+         265  GetOEMCP
+          76  DeleteCriticalSection
+         622  WideCharToMultiByte
+         227  GetEnvironmentStringsW
+         163  GetCPInfo
+         151  FreeEnvironmentStringsW
+         150  FreeEnvironmentStringsA
+         225  GetEnvironmentStrings
+         592  UnhandledExceptionFilter
+         582  TerminateProcess
+         252  GetModuleFileNameA
+         422  MoveFileA
+         580  SystemTimeToFileTime
+         107  ExitProcess
+         538  SetFileTime
+         119  FileTimeToLocalFileTime
+         408  LocalFileTimeToFileTime
+         126  FindClose
+         135  FindNextFileA
+         120  FileTimeToSystemTime
+         369  HeapReAlloc
+         427  MultiByteToWideChar
+         130  FindFirstFileA
+         444  PeekConsoleInputA
+         201  GetConsoleMode
+         263  GetNumberOfConsoleInputEvents
+         459  ReadConsoleInputA
+         479  RemoveDirectoryA
+         514  SetConsoleMode
+         529  SetEnvironmentVariableA
+         366  HeapFree
+          42  CreateDirectoryA
+         360  HeapAlloc
+         223  GetDriveTypeA
+         524  SetCurrentDirectoryA
+         250  GetLogicalDrives
+         219  GetDiskFreeSpaceA
+         209  GetCurrentDirectoryA
+         379  InterlockedDecrement
+         332  GetVersion
+         382  InterlockedIncrement
+         296  GetStartupInfoA
+         254  GetModuleHandleA
+         170  GetCommandLineA
+         108  ExitThread
+          67  CreateThread
+         137  FindResourceA
+         405  LoadResource
+         239  GetFileType
+         244  GetLastError
+         531  SetErrorMode
+         575  Sleep
+          10  Beep
+         333  GetVersionExA
+         245  GetLocalTime
+         543  SetLocalTime
+         211  GetCurrentProcess
+         278  GetProcAddress
+         400  LoadLibraryA
+         535  SetFileAttributesA
+         157  GetACP
+         501  SetConsoleCtrlHandler
+         542  SetLastError
+         380  InterlockedExchange
+         618  WaitForSingleObject
+         477  ReleaseMutex
+          24  CloseHandle
+         587  TlsSetValue
+         586  TlsGetValue
+         584  TlsAlloc
+         528  SetEndOfFile
+         537  SetFilePointer
+         298  GetStdHandle
+         635  WriteFile
+         147  FormatMessageA
+         563  SetThreadPriority
+          61  CreateProcessA
+         214  GetCurrentThreadId
+         470  ReadFile
+         142  FlushFileBuffers
+          49  CreateFileA
+         315  GetTempFileNameA
+         317  GetTempPathA
+         240  GetFullPathNameA
+         236  GetFileInformationByHandle
+          78  DeleteFileA
+

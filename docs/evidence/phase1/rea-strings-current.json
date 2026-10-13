@@ -1,0 +1,254 @@
+{
+  "evidence_id": "ev_8131ac669e5c1f54d9bbb169acc41cd2e8aeb4bec5ea01c8e94469476310a6e1",
+  "subject": {
+    "name": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe",
+    "digest": {
+      "sha256": "642a46517364a73f4fe4ab3906f94078562c92201e149fbdbc2f9fd4704f0e55"
+    },
+    "format": "pe",
+    "architecture": "x86",
+    "local_path": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe"
+  },
+  "provider": {
+    "id": "ghidra",
+    "name": "Ghidra",
+    "version": "12.1.4"
+  },
+  "analysis_profile": {
+    "provider": {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "version": "12.1.4"
+    },
+    "parameters": {
+      "target_kind": "executable",
+      "target_format": "pe",
+      "executable_role": "application",
+      "managed": false,
+      "native_aot_metadata": {
+        "contract_revision": "rtr-9.1-x64-pe-read-only-v3",
+        "source_bytes": 134217728,
+        "work_units": 67108864,
+        "working_memory_bytes": 67108864,
+        "report_bytes": 4194304
+      },
+      "architecture": "x86",
+      "available_architectures": [
+        "x86"
+      ],
+      "import_mode": "ephemeral-source-immutable",
+      "annotation_policy": "atomic-function-entry-metadata-v1",
+      "load_image_observations": "source-mappings-entry-context-v2",
+      "function_body_evidence": "complete-inclusive-ranges-v1",
+      "function_references": "complete-body-and-entry-reference-manager-v2",
+      "string_inventory_evidence": "defined-data-coverage-v1",
+      "location_resolution": "explicit-address-exact-entry-symbol-first-v3",
+      "instruction_flow_evidence": "decoded-return-pcode-v1",
+      "function_boundary_observations": "ghidra-terminal-call-limitations-v1",
+      "no_return_repair": "disabled-windows-p0",
+      "process_launch": "official-headless-script-v1",
+      "jump_table_evidence": "typed-case-default-blocks-v1",
+      "decompiler_jump_loads": true,
+      "loader": "auto-from-header",
+      "language_id": "auto-from-header",
+      "compiler_spec_id": "auto-default",
+      "analyzer_preset": "ghidra-default"
+    },
+    "digest": "b9d116ea480a02cc8773b19372074a3caf77785cbc080b1ac7133b5110e40b17"
+  },
+  "predicate_type": "rea.analysis",
+  "operation": "search_strings",
+  "parameters": {
+    "pattern": "MPA|LIVETIME|CALFACT|CMLINE|moulinette.ini",
+    "mode": "regex",
+    "case_sensitive": false
+  },
+  "raw_result": [
+    {
+      "address": "0x49b334",
+      "value": "LIVETIMERUNTIME"
+    },
+    {
+      "address": "0x49b344",
+      "value": "CALFACT2CALFACT"
+    },
+    {
+      "address": "0x49b36c",
+      "value": "CMLINE9"
+    },
+    {
+      "address": "0x49b374",
+      "value": "CMLINE8"
+    },
+    {
+      "address": "0x49b37c",
+      "value": "CMLINE7"
+    },
+    {
+      "address": "0x49b384",
+      "value": "CMLINE6"
+    },
+    {
+      "address": "0x49b38c",
+      "value": "CMLINE5"
+    },
+    {
+      "address": "0x49b394",
+      "value": "CMLINE4"
+    },
+    {
+      "address": "0x49b39c",
+      "value": "CMLINE3"
+    },
+    {
+      "address": "0x49b3a4",
+      "value": "CMLINE2"
+    },
+    {
+      "address": "0x49b3dc",
+      "value": "CMLINE1"
+    },
+    {
+      "address": "0x49b3e4",
+      "value": "CMLINE0"
+    },
+    {
+      "address": "0x49b57c",
+      "value": "*.MPA"
+    },
+    {
+      "address": "0x49ba18",
+      "value": "moulinette.ini"
+    },
+    {
+      "address": "0x49d59c",
+      "value": "COMPAT"
+    },
+    {
+      "address": "0x4a1208",
+      "value": "VECTOR argument to PACK has incompatible character length\r\n"
+    },
+    {
+      "address": "0x78b39c",
+      "value": "CreateCompatibleDC"
+    },
+    {
+      "address": "0x78b4b6",
+      "value": "CreateCompatibleBitmap"
+    },
+    {
+      "address": "0x78b594",
+      "value": "GetSystemPaletteEntries"
+    },
+    {
+      "address": "0x78bdf8",
+      "value": "CompareStringA"
+    },
+    {
+      "address": "0x78be0a",
+      "value": "CompareStringW"
+    }
+  ],
+  "normalized_result": [
+    {
+      "address": "0x49b334",
+      "value": "LIVETIMERUNTIME"
+    },
+    {
+      "address": "0x49b344",
+      "value": "CALFACT2CALFACT"
+    },
+    {
+      "address": "0x49b36c",
+      "value": "CMLINE9"
+    },
+    {
+      "address": "0x49b374",
+      "value": "CMLINE8"
+    },
+    {
+      "address": "0x49b37c",
+      "value": "CMLINE7"
+    },
+    {
+      "address": "0x49b384",
+      "value": "CMLINE6"
+    },
+    {
+      "address": "0x49b38c",
+      "value": "CMLINE5"
+    },
+    {
+      "address": "0x49b394",
+      "value": "CMLINE4"
+    },
+    {
+      "address": "0x49b39c",
+      "value": "CMLINE3"
+    },
+    {
+      "address": "0x49b3a4",
+      "value": "CMLINE2"
+    },
+    {
+      "address": "0x49b3dc",
+      "value": "CMLINE1"
+    },
+    {
+      "address": "0x49b3e4",
+      "value": "CMLINE0"
+    },
+    {
+      "address": "0x49b57c",
+      "value": "*.MPA"
+    },
+    {
+      "address": "0x49ba18",
+      "value": "moulinette.ini"
+    },
+    {
+      "address": "0x49d59c",
+      "value": "COMPAT"
+    },
+    {
+      "address": "0x4a1208",
+      "value": "VECTOR argument to PACK has incompatible character length\r\n"
+    },
+    {
+      "address": "0x78b39c",
+      "value": "CreateCompatibleDC"
+    },
+    {
+      "address": "0x78b4b6",
+      "value": "CreateCompatibleBitmap"
+    },
+    {
+      "address": "0x78b594",
+      "value": "GetSystemPaletteEntries"
+    },
+    {
+      "address": "0x78bdf8",
+      "value": "CompareStringA"
+    },
+    {
+      "address": "0x78be0a",
+      "value": "CompareStringW"
+    }
+  ],
+  "confidence": "observed",
+  "authority": "shipped-artifact",
+  "environment": null,
+  "limitations": [
+    "The session serves operations only after Ghidra reports default auto-analysis complete; incomplete analysis does not expose partial results.",
+    "The imported Program and temporary project are ephemeral and deleted on close. Annotation operations edit session database metadata; original executable bytes are never written.",
+    "Cancelling an active Ghidra request terminates its ephemeral database and discards session annotations. The selected target remains open; the next provider query imports the original artifact again.",
+    "Default-space addresses use lowercase 0x-prefixed hexadecimal; other address spaces use <percent-encoded-space>:0x<hex>.",
+    "Only Ghidra-defined string Data is observed; packed or undefined string bytes may be absent. Completeness applies to that inventory, and an empty search does not establish that text is absent from the artifact. If an address is known, use read_bytes and xrefs to inspect bytes and references.",
+    "Regex mode uses Java Pattern semantics. Matcher or compiler stack exhaustion returns a resource constraint without closing the session; literal mode avoids regex recursion and returns complete matching values.",
+    "Windows Ghidra P0 accepts approved native x86 and x86-64 PE applications and DLLs; managed, hostile, sensitive, and mutable-path targets are unsupported.",
+    "The Windows bridge uses authenticated IPv4 loopback because Node path-based IPC does not expose Java AF_UNIX sockets; the endpoint file contains no bearer token.",
+    "Windows sessions require the matching packaged Windows x64 native addon, local NTFS targets and runtimes, and Windows 10 or later. Native handles enforce path admission, private DACLs, and Job Object ownership automatically."
+  ],
+  "locations": [],
+  "evidence_links": []
+}

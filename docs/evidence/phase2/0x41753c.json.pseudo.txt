@@ -1,0 +1,96 @@
+
+undefined4 FUN_0041753c(void)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  undefined4 *puVar3;
+  byte bVar4;
+  int in_stack_00000004;
+  undefined4 local_6c [2];
+  int local_64;
+  int local_60;
+  int local_5c;
+  undefined *local_58;
+  undefined4 *local_54;
+  int local_50;
+  int local_4c;
+  undefined4 local_48;
+  undefined4 local_28;
+  
+  bVar4 = 0;
+  local_28 = 0;
+  local_48 = 0;
+  local_5c = 0x50;
+  local_58 = &DAT_004d396c;
+  local_54 = &DAT_005caf98;
+  FUN_00424af0();
+  if (DAT_004d395c == 1) {
+    DAT_004d3868 = 0;
+    DAT_004d3864 = DAT_005caf98 + -1;
+  }
+  if (DAT_004d395c == 2) {
+    DAT_004d3868 = 0;
+    local_48 = 0;
+    local_5c = 0x14;
+    local_58 = &DAT_004d3894;
+    local_54 = &DAT_004d3864;
+    FUN_00424af0();
+    DAT_004d3864 = DAT_004d3864 + -1;
+  }
+  if (DAT_004d395c == 3) {
+    local_48 = 0;
+    local_5c = 0x14;
+    local_58 = &DAT_004d3880;
+    local_54 = &DAT_004d3868;
+    FUN_00424af0();
+    local_48 = 0;
+    local_5c = 0x14;
+    local_58 = &DAT_004d386c;
+    local_54 = &DAT_004d3864;
+    FUN_00424af0();
+  }
+  local_48 = 0;
+  local_5c = 0x113;
+  local_58 = (undefined *)in_stack_00000004;
+  local_54 = (undefined4 *)0x2;
+  local_50 = 4;
+  FUN_00421290();
+  local_48 = 0;
+  FUN_00423520();
+  DAT_005caf94 = 1;
+  for (local_4c = DAT_005caf98; 0 < local_4c; local_4c = local_4c + -1) {
+    local_58 = (undefined *)(DAT_005caf94 * 0x14 + 0x5caf88);
+    local_5c = 0x14;
+    local_54 = (undefined4 *)0x14;
+    FUN_00423a70();
+    DAT_005caf94 = DAT_005caf94 + 1;
+  }
+  FUN_00423a70();
+  local_48 = 0;
+  FUN_00426090();
+  DAT_005caf94 = DAT_004d3868 + 1;
+  for (local_4c = (DAT_004d3864 - DAT_005caf94) + 2; 0 < local_4c; local_4c = local_4c + -1) {
+    local_50 = DAT_005caf94 * 0x14 + 0x5caf88;
+    puVar2 = (undefined4 *)(DAT_005caf94 * 0x14 + 0x5caf88);
+    puVar3 = local_6c;
+    for (iVar1 = 5; iVar1 != 0; iVar1 = iVar1 + -1) {
+      *puVar3 = *puVar2;
+      puVar2 = puVar2 + (uint)bVar4 * -2 + 1;
+      puVar3 = puVar3 + (uint)bVar4 * -2 + 1;
+    }
+    local_64 = FUN_0041cb00();
+    if (local_64 < 0) {
+      local_64 = 0;
+    }
+    local_60 = local_50;
+    local_5c = local_64;
+    FUN_00426690();
+    DAT_005caf94 = DAT_005caf94 + 1;
+  }
+  FUN_00426690();
+  local_48 = 0;
+  FUN_00425e20();
+  return local_28;
+}
+

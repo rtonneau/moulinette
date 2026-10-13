@@ -1,0 +1,644 @@
+{
+  "evidence_id": "ev_33ba78ccada1e02239eaab6495b59c651eb9d95f40fd22a06828698b0a9b961f",
+  "subject": {
+    "name": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe",
+    "digest": {
+      "sha256": "642a46517364a73f4fe4ab3906f94078562c92201e149fbdbc2f9fd4704f0e55"
+    },
+    "format": "pe",
+    "architecture": null,
+    "local_path": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe"
+  },
+  "provider": {
+    "id": "rea-pe-resources",
+    "name": "REA PE resource parser",
+    "version": "1"
+  },
+  "analysis_profile": null,
+  "predicate_type": "rea.analysis",
+  "operation": "inspect_pe_resources",
+  "parameters": {
+    "path": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe",
+    "max_file_bytes": 67108864,
+    "max_entries": 4096
+  },
+  "raw_result": null,
+  "normalized_result": {
+    "artifact": {
+      "path": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe",
+      "sha256": "642a46517364a73f4fe4ab3906f94078562c92201e149fbdbc2f9fd4704f0e55",
+      "bytes": 782336
+    },
+    "format": "pe32",
+    "machine": 332,
+    "directory": {
+      "rva": 3727360,
+      "location": {
+        "offset": 711168,
+        "bytes": 9368
+      },
+      "data_directory_location": {
+        "offset": 264,
+        "bytes": 8
+      }
+    },
+    "directories": [
+      {
+        "location": {
+          "offset": 711168,
+          "bytes": 40
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 3
+      },
+      {
+        "location": {
+          "offset": 711208,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711328,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711232,
+          "bytes": 72
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 7
+      },
+      {
+        "location": {
+          "offset": 711352,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711376,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711400,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711424,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711448,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711472,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711496,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711304,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      },
+      {
+        "location": {
+          "offset": 711520,
+          "bytes": 24
+        },
+        "characteristics": 0,
+        "timestamp": 1016538373,
+        "major_version": 0,
+        "minor_version": 0,
+        "named_entries": 0,
+        "id_entries": 1
+      }
+    ],
+    "resources": [
+      {
+        "index": 0,
+        "type": {
+          "kind": "id",
+          "id": 3
+        },
+        "name": {
+          "kind": "id",
+          "id": 1
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711184,
+            "bytes": 8
+          },
+          {
+            "offset": 711224,
+            "bytes": 8
+          },
+          {
+            "offset": 711344,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711544,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3734336,
+          "location": {
+            "offset": 718144,
+            "bytes": 744
+          },
+          "sha256": "f99cfc15d4e1d034ccee1bbd955db2795d491ba8f95ab56b54648c320c46f018"
+        }
+      },
+      {
+        "index": 1,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 101
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711248,
+            "bytes": 8
+          },
+          {
+            "offset": 711368,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711560,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3728240,
+          "location": {
+            "offset": 712048,
+            "bytes": 1422
+          },
+          "sha256": "865c54493e0cc9a7fb5eea7c2ee80db000a39fccbcf1087ba1f0349258df80da"
+        }
+      },
+      {
+        "index": 2,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 102
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711256,
+            "bytes": 8
+          },
+          {
+            "offset": 711392,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711576,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3729664,
+          "location": {
+            "offset": 713472,
+            "bytes": 1214
+          },
+          "sha256": "06677f37008712bc2d811513eb41d09517b6d81a18f41899d197e76af71557c1"
+        }
+      },
+      {
+        "index": 3,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 103
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711264,
+            "bytes": 8
+          },
+          {
+            "offset": 711416,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711592,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3730880,
+          "location": {
+            "offset": 714688,
+            "bytes": 732
+          },
+          "sha256": "6d9319939242b10b372642ecc1893448352319380503d4bde3bb25b659e826af"
+        }
+      },
+      {
+        "index": 4,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 106
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711272,
+            "bytes": 8
+          },
+          {
+            "offset": 711440,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711608,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3731612,
+          "location": {
+            "offset": 715420,
+            "bytes": 182
+          },
+          "sha256": "f7b6f6cdc125f83b2edfb6c6f0f35a5970f364778f5034e6d03b39aa52f345bb"
+        }
+      },
+      {
+        "index": 5,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 108
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711280,
+            "bytes": 8
+          },
+          {
+            "offset": 711464,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711624,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3731796,
+          "location": {
+            "offset": 715604,
+            "bytes": 206
+          },
+          "sha256": "aa84eb071670692aa2386fb94d1dfbdad95f6eb88905238e58fafc709224d5f8"
+        }
+      },
+      {
+        "index": 6,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 109
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711288,
+            "bytes": 8
+          },
+          {
+            "offset": 711488,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711640,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3732004,
+          "location": {
+            "offset": 715812,
+            "bytes": 1368
+          },
+          "sha256": "d3fc903baba44a77dffc963fbb5d711aac91b0ebbffa7a03bac7a05efadbcbe5"
+        }
+      },
+      {
+        "index": 7,
+        "type": {
+          "kind": "id",
+          "id": 5
+        },
+        "name": {
+          "kind": "id",
+          "id": 110
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711192,
+            "bytes": 8
+          },
+          {
+            "offset": 711296,
+            "bytes": 8
+          },
+          {
+            "offset": 711512,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711656,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3733372,
+          "location": {
+            "offset": 717180,
+            "bytes": 962
+          },
+          "sha256": "70eea66b32c7eb27ba8939fab3449c5ea08ac7dbb9c0cafa17e778300a462a4f"
+        }
+      },
+      {
+        "index": 8,
+        "type": {
+          "kind": "id",
+          "id": 14
+        },
+        "name": {
+          "kind": "id",
+          "id": 104
+        },
+        "language": {
+          "kind": "id",
+          "id": 2060
+        },
+        "entry_locations": [
+          {
+            "offset": 711200,
+            "bytes": 8
+          },
+          {
+            "offset": 711320,
+            "bytes": 8
+          },
+          {
+            "offset": 711536,
+            "bytes": 8
+          }
+        ],
+        "data_entry_location": {
+          "offset": 711672,
+          "bytes": 16
+        },
+        "code_page": 0,
+        "reserved": 0,
+        "payload": {
+          "rva": 3735080,
+          "location": {
+            "offset": 718888,
+            "bytes": 20
+          },
+          "sha256": "a0c9d012e2bf6b2fe05c2d97cb5594d97cf2f539e97935c12abd7a3562f4d9bf"
+        }
+      }
+    ],
+    "icon_groups": [
+      {
+        "resource_index": 8,
+        "images": [
+          {
+            "location": {
+              "offset": 718894,
+              "bytes": 14
+            },
+            "width": 32,
+            "height": 32,
+            "color_count": 16,
+            "reserved": 0,
+            "planes": 1,
+            "bit_count": 4,
+            "declared_bytes": 744,
+            "resource_id": 1,
+            "candidate_resource_indices": [
+              0
+            ],
+            "same_language_resource_index": 0,
+            "size_matches": true
+          }
+        ]
+      }
+    ],
+    "coverage": {
+      "status": "complete",
+      "examined_entries": 21,
+      "resources": 9
+    },
+    "limitations": [
+      "Static PE32/PE32+ type/name/language resource inventory; payloads other than RT_GROUP_ICON remain opaque.",
+      "Icon candidates are resource-table relationships. Language fallback, image decoding and actual shell/window loading are not observed.",
+      "Exact shared byte ranges are retained; non-identical overlapping resource structures or payloads are rejected."
+    ]
+  },
+  "confidence": "observed",
+  "authority": "shipped-artifact",
+  "environment": null,
+  "limitations": [
+    "Static PE32/PE32+ type/name/language resource inventory; payloads other than RT_GROUP_ICON remain opaque.",
+    "Icon candidates are resource-table relationships. Language fallback, image decoding and actual shell/window loading are not observed.",
+    "Exact shared byte ranges are retained; non-identical overlapping resource structures or payloads are rejected."
+  ],
+  "locations": [
+    {
+      "kind": "artifact-path",
+      "path": "C:\\DEV\\RUST\\moulinette\\res\\moulinetteb.exe"
+    }
+  ],
+  "evidence_links": []
+}

@@ -1,0 +1,122 @@
+import { Button, ComboBox, LineEdit, CheckBox, TextEdit, Spinner, Palette } from "std-widgets.slint";
+import { Panel } from "components/panel.slint";
+
+export component MainWindow inherits Window {
+    title: "Moulinette · Ion Beam Analysis";
+    preferred-width: 1080px; preferred-height: 820px;
+    min-width: 760px; min-height: 660px;
+    default-font-family: "Segoe UI";
+    default-font-size: 14px;
+    in-out property <bool> dark: false;
+    in-out property <bool> busy;
+    in property <bool> loaded;
+    in property <bool> has-results;
+    in property <string> filename: "No measurement selected";
+    in property <string> input-path;
+    in-out property <string> output-path;
+    in property <[string]> formats;
+    in property <[string]> spectra;
+    in-out property <int> mode;
+    in-out property <int> spectrum;
+    in-out property <string> first-channel: "0";
+    in-out property <string> last-channel;
+    in property <string> description;
+    in property <string> inspection;
+    in property <string> preview;
+    in property <string> results;
+    in property <string> warnings;
+    in property <string> status: "Open an MPA measurement to begin.";
+    in property <bool> error;
+    callback open-input();
+    callback choose-output();
+    callback settings-changed();
+    callback convert();
+    callback open-directory();
+    background: root.dark ? #151c28 : #f3f6fb;
+    property <color> ink: root.dark ? #edf2fa : #17243b;
+    property <color> muted: root.dark ? #b2bfd2 : #52637a;
+    init => { Palette.color-scheme = root.dark ? ColorScheme.dark : ColorScheme.light; }
+    changed dark => { Palette.color-scheme = root.dark ? ColorScheme.dark : ColorScheme.light; }
+    VerticalLayout {
+        padding: 24px; spacing: 16px;
+        HorizontalLayout {
+            VerticalLayout {
+                Text { text: "Moulinette"; color: root.ink; font-size: 28px; font-weight: 700; }
+                Text { text: "ION BEAM ANALYSIS  /  MEASUREMENT CONVERTER"; color: root.muted; font-size: 12px; }
+            }
+            CheckBox { text: "Dark theme"; checked <=> root.dark; }
+        }
+        Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                HorizontalLayout {
+                    Text { text: root.filename; color: root.ink; font-weight: 600; overflow: elide; }
+                    Button { text: "Open .mpa…"; enabled: !root.busy; clicked => { root.open-input(); } }
+                }
+                Text { text: root.input-path == "" ? "Select a measurement file from your computer." : root.input-path; color: root.muted; overflow: elide; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 16px;
+            Panel {
+                dark: root.dark;
+                VerticalLayout {
+                    padding: 16px; spacing: 12px;
+                    Text { text: "Measurement inspection"; color: root.ink; font-size: 18px; font-weight: 600; }
+                    Text { text: "Raw parser metadata · ADC follows DATA occurrence"; color: root.muted; wrap: word-wrap; }
+                    TextEdit { text: root.inspection; read-only: true; }
+                }
+            }
+            Panel {
+                dark: root.dark;
+                VerticalLayout {
+                    padding: 16px; spacing: 10px;
+                    Text { text: "Conversion settings"; color: root.ink; font-size: 18px; font-weight: 600; }
+                    Text { text: "Output format"; color: root.muted; }
+                    ComboBox { model: root.formats; current-index <=> root.mode; enabled: !root.busy; selected => { root.settings-changed(); } }
+                    Text { text: root.description; color: root.muted; wrap: word-wrap; }
+                    Text { text: "Spectra to convert"; color: root.muted; }
+                    ComboBox { model: root.spectra; current-index <=> root.spectrum; enabled: root.loaded && !root.busy; selected => { root.settings-changed(); } }
+                    if root.mode != 6: HorizontalLayout {
+                        VerticalLayout {
+                            Text { text: "First channel (0-based)"; color: root.muted; }
+                            LineEdit { text <=> root.first-channel; enabled: !root.busy; }
+                        }
+                        VerticalLayout {
+                            Text { text: "Last channel (inclusive)"; color: root.muted; }
+                            LineEdit { text <=> root.last-channel; placeholder-text: "Final channel"; enabled: !root.busy; }
+                        }
+                    }
+                    Text { text: "Output directory"; color: root.muted; }
+                    HorizontalLayout {
+                        LineEdit { text <=> root.output-path; enabled: !root.busy; edited => { root.settings-changed(); } }
+                        Button { text: "Browse…"; enabled: !root.busy; clicked => { root.choose-output(); } }
+                    }
+                    Text { text: "Expected filenames"; color: root.muted; }
+                    TextEdit { text: root.preview; read-only: true; min-height: 60px; }
+                    Text { text: "Existing files are never overwritten."; color: root.muted; font-size: 12px; }
+                }
+            }
+        }
+        Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                HorizontalLayout {
+                    Text { text: "Results"; color: root.ink; font-size: 18px; font-weight: 600; }
+                    Button { text: "Open output folder"; enabled: root.has-results && !root.busy; clicked => { root.open-directory(); } }
+                }
+                TextEdit { text: root.results; read-only: true; min-height: 60px; max-height: 100px; }
+                Text { text: root.warnings; color: root.muted; wrap: word-wrap; font-size: 12px; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 12px;
+            if root.busy: Spinner { }
+            Text { text: root.status; color: root.error ? (root.dark ? #ffaaaa : #a52626) : root.ink; wrap: word-wrap; }
+            Button { text: root.busy ? "Working…" : "Convert measurement"; primary: true; enabled: root.loaded && !root.busy; clicked => { root.convert(); } }
+        }
+    }
+}
+

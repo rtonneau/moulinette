@@ -1,0 +1,326 @@
+2026-10-13 14:29:28 INFO  (LoggingInitialization) Using log config file: jar:file:/C:/ghidra_12.1.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-10-13 14:29:28 INFO  (LoggingInitialization) Using log file: C:\DEV\RUST\moulinette\docs\evidence\phase2\ghidra-annotations.log  
+2026-10-13 14:29:28 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-10-13 14:29:28 INFO  (Preferences) Loading user preferences: C:\Users\rtonneau\AppData\Roaming\ghidra\ghidra_12.1.4_PUBLIC\preferences  
+2026-10-13 14:29:28 INFO  (ClassSearcher) Searching for classes...  
+2026-10-13 14:29:29 INFO  (ClassSearcher) Class search complete (983 ms)  
+2026-10-13 14:29:29 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-10-13 14:29:29 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-10-13 14:29:29 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-10-13 14:29:29 INFO  (DefaultTrustManagerFactory) Trust manager disabled, cacerts have not been set  
+2026-10-13 14:29:30 INFO  (AnalyzeHeadless) Headless startup complete (2982 ms)  
+2026-10-13 14:29:30 INFO  (ClassSearcher) Class searcher loaded 59 extension points (20 false positives)  
+2026-10-13 14:29:30 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    C:\DEV\RUST\moulinette\tools\ghidra
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts  
+2026-10-13 14:29:30 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-10-13 14:29:30 INFO  (HeadlessAnalyzer) Opening existing project: C:\DEV\RUST\moulinette\analysis\ghidra\moulinette2  
+2026-10-13 14:29:30 INFO  (HeadlessProject) Opening project: C:\DEV\RUST\moulinette\analysis\ghidra\moulinette2  
+2026-10-13 14:29:32 INFO  (HeadlessAnalyzer) REPORT: Processing project file: /moulinetteb.exe  
+2026-10-13 14:29:33 INFO  (HeadlessAnalyzer) REPORT: Execute script: AnnotateMoulinette.java   
+2026-10-13 14:29:35 INFO  (HeadlessAnalyzer) SCRIPT: C:\DEV\RUST\moulinette\tools\ghidra\AnnotateMoulinette.java  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 406be6  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 401d7e  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 409ac7  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 4015d8  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 408fd9  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 4118a0  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 4163ca  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 41662d  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 41753c  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 4178bb  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 417ed8  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 41827c  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 40bc08  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 40cb38  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 40d540  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 415c17  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 415f5f  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 416263  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 41cb00  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 41cb60  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> SKIPPED missing function at 41ceac  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c0 mpa_adc_metadata_index  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46cc mpa_data_section_ordinal  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46d8 mpa_value_offset  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46dc mpa_trimmed_line_length  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46e0 mpa_output_type_by_adc  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d73fc mpa_line_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d396c mpa_declared_count_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c4 mpa_calibration_slope_real4  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c8 mpa_calibration_offset_real4  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3868 selected_start_channel_i32  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3864 selected_stop_channel_i32  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d395c conversion_mode_other_i32  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3960 conversion_mode_nra_i32  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3964 conversion_mode_erd_i32  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3968 conversion_mode_rbs_i32  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3afc current_caloff_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3aac current_calfact_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3a5c current_calfact2_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d39bc current_livetime_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3a0c current_runtime_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3e1c current_sample_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3dcc current_particle_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3cdc current_incident_angle_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3bec current_detector_angle_text80  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 70d494 heading_yes_to_all_flag  
+2026-10-13 14:29:35 INFO  (GhidraScript) AnnotateMoulinette.java> Annotations complete; Ghidra saves the analyst project copy.  
+2026-10-13 14:29:35 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for processed file: /moulinetteb.exe  
+2026-10-13 14:32:41 INFO  (LoggingInitialization) Using log config file: jar:file:/C:/ghidra_12.1.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-10-13 14:32:41 INFO  (LoggingInitialization) Using log file: C:\DEV\RUST\moulinette\docs\evidence\phase2\ghidra-annotations.log  
+2026-10-13 14:32:42 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-10-13 14:32:42 INFO  (Preferences) Loading user preferences: C:\Users\rtonneau\AppData\Roaming\ghidra\ghidra_12.1.4_PUBLIC\preferences  
+2026-10-13 14:32:42 INFO  (ClassSearcher) Searching for classes...  
+2026-10-13 14:32:42 INFO  (ClassSearcher) Class search complete (884 ms)  
+2026-10-13 14:32:43 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-10-13 14:32:43 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-10-13 14:32:43 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-10-13 14:32:43 INFO  (DefaultTrustManagerFactory) Trust manager disabled, cacerts have not been set  
+2026-10-13 14:32:43 INFO  (AnalyzeHeadless) Headless startup complete (2753 ms)  
+2026-10-13 14:32:43 INFO  (ClassSearcher) Class searcher loaded 59 extension points (20 false positives)  
+2026-10-13 14:32:44 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    C:\DEV\RUST\moulinette\tools\ghidra
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts  
+2026-10-13 14:32:44 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-10-13 14:32:44 INFO  (HeadlessAnalyzer) Opening existing project: C:\DEV\RUST\moulinette\analysis\ghidra\moulinette2  
+2026-10-13 14:32:44 INFO  (HeadlessProject) Opening project: C:\DEV\RUST\moulinette\analysis\ghidra\moulinette2  
+2026-10-13 14:32:47 INFO  (HeadlessAnalyzer) REPORT: Processing project file: /moulinetteb.exe  
+2026-10-13 14:32:47 INFO  (HeadlessAnalyzer) REPORT: Execute script: AnnotateMoulinette.java   
+2026-10-13 14:32:50 INFO  (HeadlessAnalyzer) SCRIPT: C:\DEV\RUST\moulinette\tools\ghidra\AnnotateMoulinette.java  
+2026-10-13 14:32:50 INFO  (GhidraScript) AnnotateMoulinette.java> Image base=00400000; existing function count=147  
+2026-10-13 14:32:50 INFO  (GhidraScript) AnnotateMoulinette.java> The saved project lacks analyzed reader functions; analyzing only the analyst copy before naming.  
+2026-10-13 14:32:50 WARN  (NoReturnFunctionAnalyzer) Ignoring leading '_' chars on no-return name '___raise_securityfailure' specified in file: C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Base\data\PEFunctionsThatDoNotReturn  
+2026-10-13 14:32:50 WARN  (NoReturnFunctionAnalyzer) Ignoring leading '_' chars on no-return name '___report_rangecheckfailure' specified in file: C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Base\data\PEFunctionsThatDoNotReturn  
+2026-10-13 14:32:50 DEBUG (SymbolServerService) SymbolServerService: querying Program's Import Location - C:\DEV\RUST\moulinette\res\test_ghidra for moulinette.pdb, 3C972508, 0, 0, ???  
+2026-10-13 14:32:50 DEBUG (SymbolServerService) SymbolServerService: got 0 results from Program's Import Location - C:\DEV\RUST\moulinette\res\test_ghidra  
+2026-10-13 14:32:50 DEBUG (SymbolServerService) SymbolServerService: found 0 matches  
+2026-10-13 14:32:50 INFO  (PdbUniversalAnalyzer) Skipping PDB processing: failed to locate PDB file in configured locations  
+2026-10-13 14:32:50 INFO  (PdbUniversalAnalyzer) Use a script to set the PDB file location. I.e.,
+    PdbAnalyzer.setPdbFileOption(currentProgram, new File("/path/to/pdb/file.pdb")); or
+    PdbUniversalAnalyzer.setPdbFileOption(currentProgram, new File("/path/to/pdb/file.pdb"));
+Or set the symbol server search configuration using:    PdbPlugin.saveSymbolServerServiceConfig(...);
+ This must be done using a pre-script (prior to analysis).  
+2026-10-13 14:33:26 INFO  (PackedDatabaseCache) Packed database cache: C:\Users\rtonneau\AppData\Local\ghidra\packed-db-cache  
+2026-10-13 14:33:26 DEBUG (PackedDatabaseCache) Using cached packed database: C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Base\data\typeinfo\win32\windows_vs12_32.gdt  
+2026-10-13 14:33:27 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: windows_vs12_32  
+2026-10-13 14:33:27 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: windows_vs12_32  
+2026-10-13 14:33:50 INFO  (AutoAnalysisManager) -----------------------------------------------------
+    ASCII Strings                              0.754 secs
+    Apply Data Archives                        1.737 secs
+    Call Convention ID                         0.002 secs
+    Call-Fixup Installer                       0.076 secs
+    Create Address Tables                      0.207 secs
+    Create Address Tables - One Time           1.157 secs
+    Create Function                            0.656 secs
+    Data Reference                             0.549 secs
+    Decompiler Switch Analysis                23.613 secs
+    Demangler GNU                              0.100 secs
+    Demangler Microsoft                        0.016 secs
+    Disassemble                                1.130 secs
+    Disassemble Entry Points                   1.541 secs
+    Embedded Media                             0.103 secs
+    External Entry References                  0.001 secs
+    Function ID                                1.372 secs
+    Function Start Pre Search                  0.055 secs
+    Function Start Search                      1.206 secs
+    Function Start Search After Code           0.048 secs
+    Function Start Search After Data           1.141 secs
+    Function Start Search delayed - One Time   0.003 secs
+    Non-Returning Functions - Discovered       0.357 secs
+    Non-Returning Functions - Known            0.054 secs
+    PDB Universal                              0.020 secs
+    Reference                                  0.681 secs
+    Scalar Operand References                  1.470 secs
+    Shared Return Calls                        0.337 secs
+    Stack                                     10.788 secs
+    Subroutine References                      0.622 secs
+    Subroutine References - One Time           0.012 secs
+    WindowsResourceReference                   1.279 secs
+    X86 Function Callee Purge                  0.248 secs
+    x86 Constant Reference Analyzer            8.859 secs
+-----------------------------------------------------
+     Total Time   60 secs
+-----------------------------------------------------
+  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 406be6 FUN_00406be6 -> read_mpa_and_dispatch  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 401d7e FUN_00401d7e -> convert_selected_files_dialog110  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 409ac7 FUN_00409ac7 -> convert_selected_files_dialog101  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4015d8 FUN_004015d8 -> show_conversion_dialog110  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 408fd9 FUN_00408fd9 -> show_conversion_dialog101  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4118a0 FUN_004118a0 -> write_scientific_spectrum_and_ini  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4163ca FUN_004163ca -> write_tof_text  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41662d FUN_0041662d -> write_pro_tmca  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41753c FUN_0041753c -> write_one_column_text  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4178bb FUN_004178bb -> write_eight_column_text  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 417ed8 FUN_00417ed8 -> write_channel_yield  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41827c FUN_0041827c -> write_energy_yield  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 40bc08 FUN_0040bc08 -> uppercase_ascii_in_place  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 40cb38 FUN_0040cb38 -> show_conversion_options  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 40d540 FUN_0040d540 -> accept_conversion_options  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 415c17 FUN_00415c17 -> accept_heading_once  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 415f5f FUN_00415f5f -> accept_heading_for_all  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 416263 FUN_00416263 -> prepare_numeric_header_text  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41cb00 FUN_0041cb00 -> rtl_len_trim_spaces  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41cb60 FUN_0041cb60 -> rtl_character_equal_blank_padded  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41ceac FUN_0041ceac -> rtl_find_first_character_in_set  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c0 mpa_adc_metadata_index  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46cc mpa_data_section_ordinal  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46d8 mpa_value_offset  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46dc mpa_trimmed_line_length  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46e0 mpa_output_type_by_adc  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d73fc mpa_line_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d396c mpa_declared_count_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c4 mpa_calibration_slope_real4  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c8 mpa_calibration_offset_real4  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3868 selected_start_channel_i32  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3864 selected_stop_channel_i32  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d395c conversion_mode_other_i32  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3960 conversion_mode_nra_i32  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3964 conversion_mode_erd_i32  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3968 conversion_mode_rbs_i32  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3afc current_caloff_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3aac current_calfact_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3a5c current_calfact2_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d39bc current_livetime_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3a0c current_runtime_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3e1c current_sample_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3dcc current_particle_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3cdc current_incident_angle_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3bec current_detector_angle_text80  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 70d494 heading_yes_to_all_flag  
+2026-10-13 14:33:50 INFO  (GhidraScript) AnnotateMoulinette.java> Annotations complete; Ghidra saves the analyst project copy.  
+2026-10-13 14:33:50 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for processed file: /moulinetteb.exe  
+2026-10-13 14:50:02 INFO  (LoggingInitialization) Using log config file: jar:file:/C:/ghidra_12.1.4_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-10-13 14:50:02 INFO  (LoggingInitialization) Using log file: C:\DEV\RUST\moulinette\docs\evidence\phase2\ghidra-annotations.log  
+2026-10-13 14:50:02 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-10-13 14:50:02 INFO  (Preferences) Loading user preferences: C:\Users\rtonneau\AppData\Roaming\ghidra\ghidra_12.1.4_PUBLIC\preferences  
+2026-10-13 14:50:02 INFO  (ClassSearcher) Searching for classes...  
+2026-10-13 14:50:03 INFO  (ClassSearcher) Class search complete (1101 ms)  
+2026-10-13 14:50:03 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-10-13 14:50:03 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-10-13 14:50:03 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-10-13 14:50:03 INFO  (DefaultTrustManagerFactory) Trust manager disabled, cacerts have not been set  
+2026-10-13 14:50:04 INFO  (AnalyzeHeadless) Headless startup complete (3252 ms)  
+2026-10-13 14:50:04 INFO  (ClassSearcher) Class searcher loaded 59 extension points (20 false positives)  
+2026-10-13 14:50:04 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\SwiftDemangler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    C:\DEV\RUST\moulinette\tools\ghidra
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    C:\ghidra_12.1.4_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts  
+2026-10-13 14:50:04 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-10-13 14:50:04 INFO  (HeadlessAnalyzer) Opening existing project: C:\DEV\RUST\moulinette\analysis\ghidra\moulinette2  
+2026-10-13 14:50:04 INFO  (HeadlessProject) Opening project: C:\DEV\RUST\moulinette\analysis\ghidra\moulinette2  
+2026-10-13 14:50:07 INFO  (HeadlessAnalyzer) REPORT: Processing project file: /moulinetteb.exe  
+2026-10-13 14:50:08 INFO  (HeadlessAnalyzer) REPORT: Execute script: AnnotateMoulinette.java   
+2026-10-13 14:50:10 INFO  (HeadlessAnalyzer) SCRIPT: C:\DEV\RUST\moulinette\tools\ghidra\AnnotateMoulinette.java  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> Image base=00400000; existing function count=1194  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 406be6 read_mpa_and_dispatch -> read_mpa_and_dispatch  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 401d7e convert_selected_files_dialog110 -> convert_selected_files_dialog110  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 409ac7 convert_selected_files_dialog101 -> convert_selected_files_dialog101  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4015d8 show_conversion_dialog110 -> show_conversion_dialog110  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 408fd9 show_conversion_dialog101 -> show_conversion_dialog101  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4118a0 write_scientific_spectrum_and_ini -> write_scientific_spectrum_and_ini  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4163ca write_tof_text -> write_tof_text  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41662d write_pro_tmca -> write_pro_tmca  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41753c write_one_column_text -> write_one_column_text  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 4178bb write_eight_column_text -> write_eight_column_text  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 417ed8 write_channel_yield -> write_channel_yield  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41827c write_energy_yield -> write_energy_yield  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 40bc08 uppercase_ascii_in_place -> uppercase_ascii_in_place  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 40cb38 show_conversion_options -> show_conversion_options  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 40d540 accept_conversion_options -> accept_conversion_options  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 415c17 accept_heading_once -> accept_heading_once  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 415f5f accept_heading_for_all -> accept_heading_for_all  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 416263 prepare_numeric_header_text -> prepare_numeric_header_text  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41cb00 rtl_len_trim_spaces -> rtl_len_trim_spaces  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41cb60 rtl_character_equal_blank_padded -> rtl_character_equal_blank_padded  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> FUNCTION 41ceac rtl_find_first_character_in_set -> rtl_find_first_character_in_set  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c0 mpa_adc_metadata_index  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46cc mpa_data_section_ordinal  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46d8 mpa_value_offset  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46dc mpa_trimmed_line_length  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46e0 mpa_output_type_by_adc  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d73fc mpa_line_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d396c mpa_declared_count_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c4 mpa_calibration_slope_real4  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d46c8 mpa_calibration_offset_real4  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3868 selected_start_channel_i32  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3864 selected_stop_channel_i32  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d395c conversion_mode_other_i32  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3960 conversion_mode_nra_i32  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3964 conversion_mode_erd_i32  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3968 conversion_mode_rbs_i32  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3afc current_caloff_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3aac current_calfact_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3a5c current_calfact2_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d39bc current_livetime_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3a0c current_runtime_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3e1c current_sample_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3dcc current_particle_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3cdc current_incident_angle_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 4d3bec current_detector_angle_text80  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> GLOBAL 70d494 heading_yes_to_all_flag  
+2026-10-13 14:50:10 INFO  (GhidraScript) AnnotateMoulinette.java> Annotations complete; Ghidra saves the analyst project copy.  
+2026-10-13 14:50:10 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for processed file: /moulinetteb.exe  

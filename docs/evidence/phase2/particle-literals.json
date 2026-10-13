@@ -1,0 +1,121 @@
+﻿[
+    {
+        "Address":  "0x49caf0",
+        "Length":  5,
+        "Code":  0,
+        "Value":  "4HE++",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49caec",
+        "Length":  4,
+        "Code":  0,
+        "Value":  "HE++",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cae8",
+        "Length":  4,
+        "Code":  1,
+        "Value":  "4HE+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cae4",
+        "Length":  3,
+        "Code":  1,
+        "Value":  "4HE",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cae0",
+        "Length":  2,
+        "Code":  1,
+        "Value":  "HE",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cadc",
+        "Length":  3,
+        "Code":  1,
+        "Value":  "HE+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cad8",
+        "Length":  3,
+        "Code":  2,
+        "Value":  "1H+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cad4",
+        "Length":  2,
+        "Code":  2,
+        "Value":  "H+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cad0",
+        "Length":  2,
+        "Code":  2,
+        "Value":  "1H",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cacc",
+        "Length":  1,
+        "Code":  2,
+        "Value":  "H",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cac8",
+        "Length":  4,
+        "Code":  3,
+        "Value":  "3HE+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cac4",
+        "Length":  3,
+        "Code":  3,
+        "Value":  "3HE",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cac0",
+        "Length":  2,
+        "Code":  4,
+        "Value":  "D+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cabc",
+        "Length":  1,
+        "Code":  4,
+        "Value":  "D",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cab8",
+        "Length":  2,
+        "Code":  4,
+        "Value":  "2H",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49cab4",
+        "Length":  3,
+        "Code":  4,
+        "Value":  "2H+",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    },
+    {
+        "Address":  "0x49caac",
+        "Length":  5,
+        "Code":  5,
+        "Value":  "3HE++",
+        "Evidence":  "asm-writer.json: register-supplied Fortran comparison lengths and immediate integer values; adjacent literals need not be NUL-terminated"
+    }
+]

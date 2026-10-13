@@ -1,0 +1,12 @@
+﻿
+C:\DEV\RUST\moulinette\res\moulinetteb.exe:	file format coff-i386
+
+Sections:
+Idx Name          Size     VMA      Type
+  0 .text         00094ad5 00401000 TEXT
+  1 .rdata        0000389c 00496000 DATA
+  2 .data         00012800 0049a000 DATA
+  3 .idata        000022e4 0078a000 DATA
+  4 .tls          00000354 0078d000 DATA
+  5 .rsrc         00002498 0078e000 DATA
+  6 .reloc        00009afe 00791000 DATA

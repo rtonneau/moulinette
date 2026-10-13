@@ -1,0 +1,8 @@
+export component Panel inherits Rectangle {
+    in property <bool> dark;
+    background: dark ? #202938 : #ffffff;
+    border-color: dark ? #364254 : #dde4ee;
+    border-width: 1px;
+    border-radius: 12px;
+    @children
+}

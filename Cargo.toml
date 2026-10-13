@@ -1,0 +1,24 @@
+[package]
+name = "moulinette"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+description = "Native MPA parser and statically reconstructed spectrum converter"
+default-run = "moulinette"
+
+[[bin]]
+name = "moulinette-gui"
+path = "src/gui.rs"
+required-features = ["gui"]
+
+[features]
+default = ["gui"]
+gui = ["dep:slint", "dep:rfd", "dep:slint-build"]
+
+[dependencies]
+slint = { version = "=1.18.1", optional = true, default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2"] }
+rfd = { version = "0.17", optional = true }
+
+[build-dependencies]
+slint-build = { version = "=1.18.1", optional = true }
+

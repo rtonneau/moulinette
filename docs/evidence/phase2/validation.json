@@ -1,0 +1,16 @@
+﻿{
+    "DateUtc":  "2026-10-13T12:51:49.6818466Z",
+    "TargetExecuted":  false,
+    "RustModified":  false,
+    "ScriptSyntax":  "PASS",
+    "BaselineCopyHash":  "PASS",
+    "SentinelCountsAndOrder":  "PASS",
+    "TruncatedDataObserved":  255,
+    "TruncatedDataDeclared":  256,
+    "CalibrationSubstitutions":  "PASS",
+    "SandboxMappingAndNetworking":  "PASS",
+    "OriginalResourceHashes":  "Match Phase 1",
+    "GhidraProject":  "Copied, analyzed as necessary, named, saved",
+    "FunctionsNamed":  21,
+    "GlobalsLabeled":  26
+}

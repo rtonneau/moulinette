@@ -1,0 +1,144 @@
+﻿Dialog 101: raw UTF-16 printable runs (may include incidental data)
+Dialog
+MS Sans Serif
+ =>
+:9}
+S:q}
+Ñ:0
+UÑp0
+99}
+9q}
+Ñ:0
+Ñp0
+Çû2
+Finish
+Cancel
+ChgDir
+MkDir
+RmDir
+View
+Rename
+Delete
+ChgDir
+MkDir
+RmDir
+View
+Rename
+Delete
+Directories
+V(l
+Files
+Path
+Drive
+iÆ.
+Type of files
+INPUT
+Directories
+Files
+Path
+Drive
+Type of output files
+OUTPUT
+Dialog 102: raw UTF-16 printable runs (may include incidental data)
+HEADING
+MS Sans Serif
+Gª2
+Yes
+Yes to all
+Sample
+Particle Type
+Incident Energy (MeV)
+Current (nA)
+Incident Angle (°)
+Preset Charge (µC)
+Detector Type
+Detector Angle (°)
+Detector Omega (msr)
+Detector Resolution (keV)
+Start Channel
+Stop Channel
+Dialog 103: raw UTF-16 printable runs (may include incidental data)
+Set path
+MS Sans Serif
+Cancel
+Input path
+Output path
+path for ini files
+Ini file for RBS
+Ini file for ERD
+Ini file for NRA
+Exp. ini file
+Dialog 106: raw UTF-16 printable runs (may include incidental data)
+MS Sans Serif
+%62
+i62
+Cancel
+Dialog 108: raw UTF-16 printable runs (may include incidental data)
+Dialog
+MS Sans Serif
+Yes
+E)2
+Yes to all
+Dialog 109: raw UTF-16 printable runs (may include incidental data)
+Convert options
+MS Sans Serif
+&%5
+Full spectrum
+%65
+First points
+EB*
+Roi
+E`*
+Ep*
+Full spectrum
+First points
+ºB*
+Roi
+º`*
+ºp*
+Full spectrum
+First points
+Roi
+Min
+Max
+RBS
+Min
+Max
+ERD
+Min
+Max
+NRA
+Respect file
+User
+Roi
+Min
+Max
+Other
+Dialog 110: raw UTF-16 printable runs (may include incidental data)
+Dialog
+MS Sans Serif
+Ñp0
+89}
+9q}
+Ñ:0
+ =>
+ChgDir
+MkDir
+RmDir
+View
+Rename
+Delete
+}ü?
+Param. conv.
+Çû2
+Finish
+Cancel
+%Ù¿
+Files
+INPUT
+Directories
+Files
+Path
+Drive
+Type of output files
+OUTPUT

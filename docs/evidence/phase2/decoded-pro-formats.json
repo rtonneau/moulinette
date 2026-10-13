@@ -1,0 +1,447 @@
+[
+  {
+    "address": "0x49c5f4",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c600",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c61c",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c64c",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "25",
+        "primitive": "25",
+        "repeat": 1,
+        "width": 8,
+        "digits": 8
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c684",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "25",
+        "primitive": "25",
+        "repeat": 1,
+        "width": 8,
+        "digits": 8
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c6a8",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "25",
+        "primitive": "25",
+        "repeat": 1,
+        "width": 8,
+        "digits": 8
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c6e0",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "1f",
+        "primitive": "1f",
+        "repeat": 1,
+        "width": 10,
+        "digits": 4
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c718",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "1f",
+        "primitive": "1f",
+        "repeat": 1,
+        "width": 10,
+        "digits": 4
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c750",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "1f",
+        "primitive": "1f",
+        "repeat": 1,
+        "width": 10,
+        "digits": 4
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c78c",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "25",
+        "primitive": "25",
+        "repeat": 1,
+        "width": 8,
+        "digits": 8
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c810",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "48",
+        "primitive": "13",
+        "repeat": 1,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  },
+  {
+    "address": "0x49c408",
+    "tokens": [
+      {
+        "token": "36",
+        "primitive": "1",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      },
+      {
+        "token": "e",
+        "primitive": "e",
+        "repeat": 1,
+        "width": 1,
+        "digits": 0
+      },
+      {
+        "token": "24",
+        "primitive": "24",
+        "repeat": 1,
+        "width": 5,
+        "digits": 0
+      },
+      {
+        "token": "37",
+        "primitive": "2",
+        "repeat": null,
+        "width": 0,
+        "digits": 0
+      }
+    ]
+  }
+]

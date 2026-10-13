@@ -1,0 +1,56 @@
+﻿{
+    "Bytes":  96819,
+    "CRLFPairs":  25053,
+    "HighBytes":  [
+                      {
+                          "Name":  "176",
+                          "Count":  3
+                      }
+                  ],
+    "Spectra":  [
+                    {
+                        "Section":  "DATA0",
+                        "HeaderLine":  218,
+                        "Declared":  8192,
+                        "Observed":  8192,
+                        "Sum":  2102300,
+                        "Minimum":  0,
+                        "Maximum":  1440,
+                        "First":  0,
+                        "Last":  0
+                    },
+                    {
+                        "Section":  "DATA1",
+                        "HeaderLine":  8411,
+                        "Declared":  8192,
+                        "Observed":  8192,
+                        "Sum":  3304096,
+                        "Minimum":  0,
+                        "Maximum":  2386,
+                        "First":  0,
+                        "Last":  0
+                    },
+                    {
+                        "Section":  "DATA2",
+                        "HeaderLine":  16604,
+                        "Declared":  8192,
+                        "Observed":  8192,
+                        "Sum":  713758,
+                        "Minimum":  0,
+                        "Maximum":  64860,
+                        "First":  0,
+                        "Last":  0
+                    },
+                    {
+                        "Section":  "DATA3",
+                        "HeaderLine":  24797,
+                        "Declared":  256,
+                        "Observed":  256,
+                        "Sum":  139955,
+                        "Minimum":  0,
+                        "Maximum":  139224,
+                        "First":  0,
+                        "Last":  0
+                    }
+                ]
+}
