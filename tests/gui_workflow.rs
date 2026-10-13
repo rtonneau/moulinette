@@ -7,6 +7,42 @@ use std::{
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
+fn dropped_measurement_rejects_invalid_batches_and_busy_work() {
+    let dir = std::env::temp_dir().join(format!(
+        "moulinette-drop-tests-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
+    fs::create_dir(&dir).unwrap();
+    let file = dir.join("measurement.MPA");
+    let other = dir.join("measurement.txt");
+    let folder = dir.join("folder.mpa");
+    fs::write(&file, b"[DATA0,1]\n1\n").unwrap();
+    fs::write(&other, b"text").unwrap();
+    fs::create_dir(&folder).unwrap();
+    let paths = vec![file.clone()];
+    assert_eq!(gui_state::dropped_measurement(&paths, false).unwrap(), file);
+    assert!(
+        gui_state::dropped_measurement(&paths, true)
+            .unwrap_err()
+            .contains("Working")
+    );
+    for paths in [
+        vec![],
+        vec![file.clone(), file.clone()],
+        vec![other.clone()],
+        vec![folder.clone()],
+        vec![dir.join("missing.mpa")],
+    ] {
+        assert!(gui_state::dropped_measurement(&paths, false).is_err());
+    }
+    fs::remove_file(file).unwrap();
+    fs::remove_file(other).unwrap();
+    fs::remove_dir(folder).unwrap();
+    fs::remove_dir(dir).unwrap();
+}
+
+#[test]
 fn mode_mapping_and_validation() {
     for (index, (expected, _, _)) in gui_state::MODES.iter().enumerate() {
         let (format, selection, indices) =

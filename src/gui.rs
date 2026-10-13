@@ -64,6 +64,99 @@ fn report(ui: &MainWindow, result: Result<String, String>) {
     ui.set_status(result.unwrap_or_else(|e| e).into());
 }
 
+// Winit 0.30 delivers one event per file and no position with the drop.
+// Read the Windows cursor in physical coordinates, then convert to Slint units.
+#[cfg(target_os = "windows")]
+fn drop_position(ui: &MainWindow) -> Option<(f32, f32)> {
+    use slint::winit_030::WinitWindowAccessor;
+    let cursor = winsafe::GetCursorPos().ok()?;
+    ui.window().with_winit_window(|window| {
+        let origin = window.inner_position().ok()?;
+        let scale = window.scale_factor() as f32;
+        Some((
+            (cursor.x - origin.x) as f32 / scale,
+            (cursor.y - origin.y) as f32 / scale,
+        ))
+    })?
+}
+
+#[cfg(target_os = "windows")]
+fn install_file_drop(ui: &MainWindow, load: Rc<dyn Fn(PathBuf)>) {
+    use slint::winit_030::{EventResult, WinitWindowAccessor, winit::event::WindowEvent};
+    let hover_timer = Rc::new(slint::Timer::default());
+    let drop_timer = Rc::new(slint::Timer::default());
+    let pending = Rc::new(RefCell::new(Vec::<PathBuf>::new()));
+    let weak = ui.as_weak();
+    ui.window().on_winit_window_event(move |_, event| {
+        let Some(ui) = weak.upgrade() else {
+            return EventResult::Propagate;
+        };
+        match event {
+            WindowEvent::HoveredFile(_) => {
+                let weak = ui.as_weak();
+                hover_timer.start(
+                    slint::TimerMode::Repeated,
+                    std::time::Duration::from_millis(50),
+                    move || {
+                        if let Some(ui) = weak.upgrade() {
+                            let inside = drop_position(&ui)
+                                .is_some_and(|(x, y)| ui.invoke_input_contains(x, y));
+                            ui.set_drop_hint(if inside && ui.get_busy() {
+                                "Working — drop the file again when finished.".into()
+                            } else if inside {
+                                "Release here to load one .mpa file.".into()
+                            } else {
+                                "".into()
+                            });
+                        }
+                    },
+                );
+            }
+            WindowEvent::HoveredFileCancelled => {
+                hover_timer.stop();
+                ui.set_drop_hint("".into());
+            }
+            WindowEvent::DroppedFile(path) => {
+                hover_timer.stop();
+                // Capture location and busy state at release, not when the timer fires.
+                // Subsequent per-file events join this same batch without starting a load.
+                if pending.borrow().is_empty() {
+                    let inside =
+                        drop_position(&ui).is_some_and(|(x, y)| ui.invoke_input_contains(x, y));
+                    let busy = ui.get_busy();
+                    let weak = ui.as_weak();
+                    let pending = pending.clone();
+                    let load = load.clone();
+                    drop_timer.start(
+                        slint::TimerMode::SingleShot,
+                        std::time::Duration::from_millis(50),
+                        move || {
+                            let paths = std::mem::take(&mut *pending.borrow_mut());
+                            let Some(ui) = weak.upgrade() else {
+                                return;
+                            };
+                            ui.set_drop_hint("".into());
+                            if !inside {
+                                return;
+                            }
+                            match gui_state::dropped_measurement(&paths, busy || ui.get_busy()) {
+                                Ok(path) => load(path.to_path_buf()),
+                                Err(message) => ui.set_drop_hint(message.into()),
+                            }
+                        },
+                    );
+                }
+                pending.borrow_mut().push(path.clone());
+            }
+            _ => {}
+        }
+        EventResult::Propagate
+    });
+}
+
+#[cfg(not(target_os = "windows"))]
+fn install_file_drop(_: &MainWindow, _: Rc<dyn Fn(PathBuf)>) {}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ui = MainWindow::new()?;
     let state = Rc::new(RefCell::new(State::default()));
@@ -87,20 +180,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let weak = ui.as_weak();
     let shared = state.clone();
     let timer_open = timer.clone();
-    ui.on_open_input(move || {
+    let load: Rc<dyn Fn(PathBuf)> = Rc::new(move |path| {
         let Some(ui) = weak.upgrade() else {
             return;
         };
         if ui.get_busy() {
             return;
         }
-        // Native dialogs are modal; parsing starts only after the picker returns.
-        let Some(path) = rfd::FileDialog::new()
-            .add_filter("MPA measurements", &["mpa"])
-            .pick_file()
-        else {
-            return;
-        };
+        ui.set_drop_hint("".into());
         ui.set_busy(true);
         ui.set_loaded(false);
         ui.set_has_results(false);
@@ -196,6 +283,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             },
         );
+    });
+
+    let load_input = load.clone();
+    let weak = ui.as_weak();
+    ui.on_open_input(move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        if ui.get_busy() {
+            return;
+        }
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("MPA measurements", &["mpa"])
+            .pick_file()
+        {
+            load_input(path);
+        }
     });
 
     let weak = ui.as_weak();
@@ -329,6 +433,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     });
+    install_file_drop(&ui, load);
     ui.run()?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scrolling_moves_drop_target_and_reaches_convert_in_short_window() {
+        slint::platform::set_platform(Box::new(i_slint_backend_testing::TestingBackend::new(
+            i_slint_backend_testing::TestingBackendOptions {
+                mock_time: true,
+                renderer_name: Some("software".into()),
+                ..Default::default()
+            },
+        )))
+        .unwrap();
+        let ui = MainWindow::new().unwrap();
+        ui.window().set_size(slint::LogicalSize::new(760., 400.));
+        ui.show().unwrap();
+        ui.set_loaded(true);
+        let clicked = Rc::new(std::cell::Cell::new(false));
+        let result = clicked.clone();
+        ui.on_convert(move || result.set(true));
+        assert!(ui.invoke_input_contains(100., 130.));
+        assert!(!ui.invoke_input_contains(0., 130.));
+        assert!(!ui.invoke_input_contains(100., 399.));
+        ui.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerScrolled {
+                position: slint::LogicalPosition::new(10., 200.),
+                delta_x: 0.,
+                delta_y: -5000.,
+            });
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(500));
+        assert!(
+            !ui.invoke_input_contains(100., 130.),
+            "drop target must follow the scrolled input panel"
+        );
+        let button =
+            i_slint_backend_testing::ElementHandle::find_by_element_type_name(&ui, "Button")
+                .last()
+                .expect("footer Convert button");
+        let position = button.absolute_position();
+        let size = button.size();
+        assert!(
+            position.y >= 0. && position.y + size.height <= 400.,
+            "Convert button must fit in viewport: {position:?} {size:?}"
+        );
+        button.mock_single_click(slint::platform::PointerEventButton::Left);
+        assert!(
+            clicked.get(),
+            "Convert must be reachable after scrolling to the bottom"
+        );
+    }
 }

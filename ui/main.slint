@@ -1,10 +1,10 @@
-import { Button, ComboBox, LineEdit, CheckBox, TextEdit, Spinner, Palette } from "std-widgets.slint";
+import { Button, ComboBox, LineEdit, CheckBox, TextEdit, Spinner, Palette, ScrollView } from "std-widgets.slint";
 import { Panel } from "components/panel.slint";
 
 export component MainWindow inherits Window {
     title: "Moulinette · Ion Beam Analysis";
     preferred-width: 1080px; preferred-height: 820px;
-    min-width: 760px; min-height: 660px;
+    min-width: 760px; min-height: 300px;
     default-font-family: "Segoe UI";
     default-font-size: 14px;
     in-out property <bool> dark: false;
@@ -27,7 +27,14 @@ export component MainWindow inherits Window {
     in property <string> warnings;
     in property <string> status: "Open an MPA measurement to begin.";
     in property <bool> error;
+    in property <string> drop-hint;
     callback open-input();
+    callback input-contains(float, float) -> bool;
+    input-contains(x, y) => {
+        return x >= input-panel.absolute-position.x / 1px && x < (input-panel.absolute-position.x + input-panel.width) / 1px
+            && y >= input-panel.absolute-position.y / 1px && y < (input-panel.absolute-position.y + input-panel.height) / 1px
+            && y >= 0 && y < root.height / 1px;
+    }
     callback choose-output();
     callback settings-changed();
     callback convert();
@@ -37,7 +44,9 @@ export component MainWindow inherits Window {
     property <color> muted: root.dark ? #b2bfd2 : #52637a;
     init => { Palette.color-scheme = root.dark ? ColorScheme.dark : ColorScheme.light; }
     changed dark => { Palette.color-scheme = root.dark ? ColorScheme.dark : ColorScheme.light; }
-    VerticalLayout {
+    ScrollView {
+      horizontal-scrollbar-policy: always-off;
+      VerticalLayout {
         padding: 24px; spacing: 16px;
         HorizontalLayout {
             VerticalLayout {
@@ -46,7 +55,7 @@ export component MainWindow inherits Window {
             }
             CheckBox { text: "Dark theme"; checked <=> root.dark; }
         }
-        Panel {
+        input-panel := Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 8px;
@@ -54,7 +63,8 @@ export component MainWindow inherits Window {
                     Text { text: root.filename; color: root.ink; font-weight: 600; overflow: elide; }
                     Button { text: "Open .mpa…"; enabled: !root.busy; clicked => { root.open-input(); } }
                 }
-                Text { text: root.input-path == "" ? "Select a measurement file from your computer." : root.input-path; color: root.muted; overflow: elide; }
+                Text { text: root.drop-hint != "" ? root.drop-hint : root.busy ? "Working — file drops are unavailable." : "Drop one .mpa file here, or use Open."; color: root.muted; }
+                Text { text: root.input-path; color: root.muted; overflow: elide; }
             }
         }
         HorizontalLayout {
@@ -117,6 +127,7 @@ export component MainWindow inherits Window {
             Text { text: root.status; color: root.error ? (root.dark ? #ffaaaa : #a52626) : root.ink; wrap: word-wrap; }
             Button { text: root.busy ? "Working…" : "Convert measurement"; primary: true; enabled: root.loaded && !root.busy; clicked => { root.convert(); } }
         }
+    }
     }
 }
 

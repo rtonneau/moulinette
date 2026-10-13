@@ -6,6 +6,24 @@ use crate::{
 };
 use std::path::{Path, PathBuf};
 
+/// Validate a complete native drop before changing the loaded measurement.
+pub fn dropped_measurement(paths: &[PathBuf], busy: bool) -> Result<&Path, String> {
+    if busy {
+        return Err("Working — drop the file again when finished.".into());
+    }
+    let [path] = paths else {
+        return Err("Drop exactly one .mpa measurement file.".into());
+    };
+    if !path.is_file()
+        || !path
+            .extension()
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("mpa"))
+    {
+        return Err("Drop one .mpa file, not a folder or another file type.".into());
+    }
+    Ok(path)
+}
+
 pub const MODES: [(Format, &str, &str); 8] = [
     (
         Format::Xy,

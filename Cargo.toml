@@ -13,12 +13,18 @@ required-features = ["gui"]
 
 [features]
 default = ["gui"]
-gui = ["dep:slint", "dep:rfd", "dep:slint-build"]
+gui = ["dep:slint", "dep:rfd", "dep:slint-build", "dep:winsafe"]
 
 [dependencies]
-slint = { version = "=1.18.1", optional = true, default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2"] }
+slint = { version = "=1.18.1", optional = true, default-features = false, features = ["std", "backend-winit", "renderer-software", "compat-1-2", "unstable-winit-030"] }
 rfd = { version = "0.17", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+winsafe = { version = "0.0.29", optional = true, features = ["user"] }
 
 [build-dependencies]
 slint-build = { version = "=1.18.1", optional = true }
+
+[dev-dependencies]
+i-slint-backend-testing = { version = "=1.18.1", features = ["renderer-software"] }
 

@@ -81,7 +81,12 @@ they do not prove equivalence with the original executable. Output uses CRLF;
 legacy RTL rounding, x87 precision corner cases and malformed-input behavior
 remain unvalidated. The replacement rejects unsafe selections.
 
-GUI limitations: no drag-and-drop, plots, cancellation or estimated progress.
+The window scrolls vertically on smaller screens. On Windows, drop one `.mpa`
+file onto the input panel to load it, just like Open; conversion starts only
+when requested. Multiple files, folders and other file types are rejected
+without replacing the measurement. Drops are unavailable while work is running.
+
+GUI limitations: no plots, cancellation or estimated progress.
 Select all spectra or one spectrum; arbitrary subsets are unavailable. Metadata
 display uses lossy UTF-8 while the parser retains original bytes. The ADC
 association follows DATA occurrence order, not the DATA suffix. EY uses CALFACT
