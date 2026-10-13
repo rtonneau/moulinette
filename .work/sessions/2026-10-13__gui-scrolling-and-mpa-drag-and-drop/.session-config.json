@@ -1,0 +1,51 @@
+{
+  "session_id": "2026-10-13__gui-scrolling-and-mpa-drag-and-drop",
+  "feature_name": "GUI scrolling and MPA drag and drop",
+  "scratch_dir": ".scratch/tests/2026-10-13__gui-scrolling-and-mpa-drag-and-drop",
+  "created_at": "2026-10-13T15:07:03.815Z",
+  "template_version": 2,
+  "history": [
+    {
+      "at": "2026-10-13T15:07:03.815Z",
+      "event": "session_started",
+      "phase": "grill",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-13T15:16:50.838Z",
+      "event": "grill_written",
+      "phase": "plan-not-started",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-13T15:31:01.670Z",
+      "event": "changelog_written",
+      "phase": "plan-not-started",
+      "detail": {
+        "bump": "patch"
+      }
+    },
+    {
+      "at": "2026-10-13T15:31:49.555Z",
+      "event": "session_finished",
+      "phase": "finished",
+      "files": [
+        "INDEX.md"
+      ]
+    }
+  ],
+  "current_phase": "finished",
+  "changelog": {
+    "bump": "patch",
+    "floor": "patch",
+    "reason": null,
+    "bullets": 2,
+    "path": ".work/changelog/2026-10-13__gui-scrolling-and-mpa-drag-and-drop.md",
+    "written_at": "2026-10-13T15:31:01.665Z"
+  },
+  "finished_at": "2026-10-13T15:31:49.555Z"
+}
