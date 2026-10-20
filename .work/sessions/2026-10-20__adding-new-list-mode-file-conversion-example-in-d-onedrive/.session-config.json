@@ -125,6 +125,30 @@
         "ticket": "03-rate-vs-time-plot-and-cli",
         "commit": "ef6ab90"
       }
+    },
+    {
+      "at": "2026-10-20T09:40:11.400Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/04-violin-plot.md",
+        "03-implement/04-violin-plot/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-violin-plot"
+      }
+    },
+    {
+      "at": "2026-10-20T09:50:43.926Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/04-violin-plot/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-violin-plot",
+        "commit": "ec2e390"
+      }
     }
   ],
   "current_phase": "ship",
