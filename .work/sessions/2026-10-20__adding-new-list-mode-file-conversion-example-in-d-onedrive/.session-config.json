@@ -77,6 +77,30 @@
         "ticket": "01-lst-binary-parser",
         "commit": "03d11d5"
       }
+    },
+    {
+      "at": "2026-10-20T09:14:14.697Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/02-roi-and-time-binned-rate.md",
+        "03-implement/02-roi-and-time-binned-rate/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-roi-and-time-binned-rate"
+      }
+    },
+    {
+      "at": "2026-10-20T09:18:49.771Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/02-roi-and-time-binned-rate/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-roi-and-time-binned-rate",
+        "commit": "1dc972c"
+      }
     }
   ],
   "current_phase": "ship",
