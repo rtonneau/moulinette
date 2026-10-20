@@ -2,5 +2,6 @@
 #![forbid(unsafe_code)]
 pub mod conversion;
 pub mod gui_state;
+pub mod lst;
 pub mod mpa;
 pub mod workflow;
