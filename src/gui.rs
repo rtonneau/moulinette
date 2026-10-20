@@ -1,20 +1,66 @@
 #![deny(unsafe_code)]
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
-use moulinette::{gui_state, mpa::MpaFile, workflow};
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use moulinette::{gui_state, lst::ListFile, mpa::MpaFile, workflow};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 // Slint-generated bindings require unsafe code; handwritten code does not.
 #[allow(unsafe_code)]
 mod presentation {
     slint::include_modules!();
 }
-use presentation::MainWindow;
+use presentation::{MainWindow, RoiRow, TimeWindowRow};
 
 #[derive(Default)]
 struct State {
     input: PathBuf,
     file: Option<Arc<MpaFile>>,
+    list: Option<Arc<ListFile>>,
     result_directory: Option<PathBuf>,
+}
+
+/// A loaded input: an `.mpa` measurement or an `.lst` list-mode file.
+enum Measurement {
+    Mpa(MpaFile),
+    List(ListFile),
+}
+
+fn blank_roi() -> RoiRow {
+    RoiRow {
+        adc: "1".into(),
+        ..Default::default()
+    }
+}
+
+/// Validate the list-mode panel's current rows and fields.
+fn list_parameters(ui: &MainWindow) -> Result<gui_state::ListParameters, String> {
+    let rois: Vec<RoiRow> = ui.get_rois().iter().collect();
+    let windows: Vec<TimeWindowRow> = ui.get_time_windows().iter().collect();
+    gui_state::list_mode_parameters(
+        &rois
+            .iter()
+            .map(|r| gui_state::RoiFields {
+                name: r.name.as_str(),
+                adc: r.adc.as_str(),
+                low: r.low.as_str(),
+                high: r.high.as_str(),
+                unit: r.unit,
+            })
+            .collect::<Vec<_>>(),
+        ui.get_bin_width().as_str(),
+        &windows
+            .iter()
+            .map(|w| (w.start_s.as_str(), w.end_s.as_str()))
+            .collect::<Vec<_>>(),
+        ui.get_output_path().as_str(),
+    )
+}
+
+fn joined(paths: &[PathBuf]) -> String {
+    paths
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn strings(values: impl IntoIterator<Item = String>) -> ModelRc<SharedString> {
@@ -46,11 +92,16 @@ fn refresh(ui: &MainWindow, state: &State) {
         );
         ui.set_preview(
             match preview {
-                Ok(paths) => paths
-                    .iter()
-                    .map(|p| p.display().to_string())
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                Ok(paths) => joined(&paths),
+                Err(e) => e,
+            }
+            .into(),
+        );
+    }
+    if state.list.is_some() {
+        ui.set_preview(
+            match list_parameters(ui) {
+                Ok(params) => joined(&gui_state::list_mode_outputs(&params)),
                 Err(e) => e,
             }
             .into(),
@@ -104,7 +155,7 @@ fn install_file_drop(ui: &MainWindow, load: Rc<dyn Fn(PathBuf)>) {
                             ui.set_drop_hint(if inside && ui.get_busy() {
                                 "Working — drop the file again when finished.".into()
                             } else if inside {
-                                "Release here to load one .mpa file.".into()
+                                "Release here to load one .mpa or .lst file.".into()
                             } else {
                                 "".into()
                             });
@@ -167,6 +218,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|(_, label, _)| label.to_string()),
     ));
     ui.set_spectra(strings(["All spectra".into()]));
+    ui.set_roi_units(strings(
+        gui_state::ROI_UNITS
+            .iter()
+            .map(|(_, label)| label.to_string()),
+    ));
+    ui.set_bin_width(gui_state::DEFAULT_BIN_WIDTH_MS.to_string().into());
+    // Rows persist across loads so one ROI set can be reused for several files.
+    let rois = Rc::new(VecModel::from(vec![blank_roi()]));
+    let time_windows = Rc::new(VecModel::<TimeWindowRow>::default());
+    ui.set_rois(rois.clone().into());
+    ui.set_time_windows(time_windows.clone().into());
     refresh(&ui, &state.borrow());
 
     let weak = ui.as_weak();
@@ -187,6 +249,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if ui.get_busy() {
             return;
         }
+        let list_mode = gui_state::is_list_mode(&path);
+        ui.set_list_mode(list_mode);
         ui.set_drop_hint("".into());
         ui.set_busy(true);
         ui.set_loaded(false);
@@ -201,7 +265,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui.set_input_path(path.to_string_lossy().as_ref().into());
         ui.set_inspection("".into());
         ui.set_preview("".into());
-        ui.set_results("No conversion yet.".into());
+        ui.set_results(
+            if list_mode {
+                "No analysis yet."
+            } else {
+                "No conversion yet."
+            }
+            .into(),
+        );
         ui.set_warnings("".into());
         *shared.borrow_mut() = State::default();
         ui.set_error(false);
@@ -209,7 +280,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let weak = ui.as_weak();
         let (sender, receiver) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
-            let result = workflow::load(&path);
+            let result = if list_mode {
+                gui_state::load_list(&path).map(Measurement::List)
+            } else {
+                workflow::load(&path).map(Measurement::Mpa)
+            };
             let _ = sender.send((path, result));
         });
         // Timer polls only the channel; all Slint/state access stays on the event-loop thread.
@@ -240,19 +315,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 };
                 match result {
-                    Ok(file) => {
-                        let count = file.spectra.len();
-                        ui.set_spectra(strings(std::iter::once("All spectra".into()).chain(
-                            file.spectra.iter().enumerate().map(|(i, s)| {
-                                format!(
-                                    "Spectrum {} · ADC{} · {} channels",
-                                    i + 1,
-                                    s.adc_index,
-                                    s.declared_channels
-                                )
-                            }),
-                        )));
-                        ui.set_spectrum(0);
+                    Ok(measurement) => {
                         ui.set_filename(
                             path.file_name()
                                 .unwrap_or_default()
@@ -270,14 +333,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         );
                         ui.set_loaded(true);
                         ui.set_has_results(false);
-                        ui.set_results("No conversion yet.".into());
                         ui.set_warnings("".into());
                         let mut state = shared.borrow_mut();
                         state.input = path;
-                        state.file = Some(Arc::new(file));
                         state.result_directory = None;
+                        let message = match measurement {
+                            Measurement::Mpa(file) => {
+                                let count = file.spectra.len();
+                                ui.set_spectra(strings(
+                                    std::iter::once("All spectra".into()).chain(
+                                        file.spectra.iter().enumerate().map(|(i, s)| {
+                                            format!(
+                                                "Spectrum {} · ADC{} · {} channels",
+                                                i + 1,
+                                                s.adc_index,
+                                                s.declared_channels
+                                            )
+                                        }),
+                                    ),
+                                ));
+                                ui.set_spectrum(0);
+                                ui.set_results("No conversion yet.".into());
+                                state.file = Some(Arc::new(file));
+                                format!("Measurement ready · {count} spectra.")
+                            }
+                            Measurement::List(file) => {
+                                let count = file.events.len();
+                                ui.set_inspection(gui_state::list_inspection(&file).into());
+                                ui.set_results("No analysis yet.".into());
+                                state.list = Some(Arc::new(file));
+                                format!("List-mode file ready · {count} events.")
+                            }
+                        };
                         refresh(&ui, &state);
-                        report(&ui, Ok(format!("Measurement ready · {count} spectra.")));
+                        report(&ui, Ok(message));
                     }
                     Err(e) => report(&ui, Err(e)),
                 }
@@ -295,7 +384,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return;
         }
         if let Some(path) = rfd::FileDialog::new()
+            .add_filter("Measurements", &["mpa", "lst"])
             .add_filter("MPA measurements", &["mpa"])
+            .add_filter("List-mode files", &["lst"])
             .pick_file()
         {
             load_input(path);
@@ -388,14 +479,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 };
                 match result {
                     Ok(paths) => {
-                        ui.set_results(
-                            paths
-                                .iter()
-                                .map(|p| p.display().to_string())
-                                .collect::<Vec<_>>()
-                                .join("\n")
-                                .into(),
-                        );
+                        ui.set_results(joined(&paths).into());
                         ui.set_has_results(true);
                         shared.borrow_mut().result_directory = Some(dir);
                         report(
@@ -408,6 +492,145 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     Err(e) => {
                         ui.set_results("Conversion failed. See the message below.".into());
+                        report(&ui, Err(e));
+                    }
+                }
+            },
+        );
+    });
+
+    let weak = ui.as_weak();
+    let shared = state.clone();
+    let model = rois.clone();
+    ui.on_add_roi(move || {
+        if let Some(ui) = weak.upgrade()
+            && !ui.get_busy()
+        {
+            model.push(blank_roi());
+            refresh(&ui, &shared.borrow());
+        }
+    });
+
+    let weak = ui.as_weak();
+    let shared = state.clone();
+    ui.on_remove_roi(move |index| {
+        if let Some(ui) = weak.upgrade()
+            && !ui.get_busy()
+            && let Ok(index) = usize::try_from(index)
+            && index < rois.row_count()
+        {
+            rois.remove(index);
+            refresh(&ui, &shared.borrow());
+        }
+    });
+
+    let weak = ui.as_weak();
+    let shared = state.clone();
+    let model = time_windows.clone();
+    ui.on_add_time_window(move || {
+        if let Some(ui) = weak.upgrade()
+            && !ui.get_busy()
+        {
+            model.push(TimeWindowRow::default());
+            refresh(&ui, &shared.borrow());
+        }
+    });
+
+    let weak = ui.as_weak();
+    let shared = state.clone();
+    ui.on_remove_time_window(move |index| {
+        if let Some(ui) = weak.upgrade()
+            && !ui.get_busy()
+            && let Ok(index) = usize::try_from(index)
+            && index < time_windows.row_count()
+        {
+            time_windows.remove(index);
+            refresh(&ui, &shared.borrow());
+        }
+    });
+
+    let weak = ui.as_weak();
+    let shared = state.clone();
+    let timer_analyze = timer.clone();
+    ui.on_analyze(move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        // The single busy flag is shared with loading and conversion, so no
+        // two runs of any kind overlap.
+        if ui.get_busy() {
+            return;
+        }
+        let Some(file) = shared.borrow().list.clone() else {
+            report(&ui, Err("Open a list-mode file first".into()));
+            return;
+        };
+        let params = match list_parameters(&ui) {
+            Ok(p) => p,
+            Err(e) => {
+                report(&ui, Err(e));
+                return;
+            }
+        };
+        ui.set_busy(true);
+        ui.set_error(false);
+        ui.set_status("Computing rates and rendering plots…".into());
+        ui.set_has_results(false);
+        ui.set_results("Analysis in progress…".into());
+        ui.set_warnings(gui_state::LIST_MODE_WARNINGS.into());
+        let weak = ui.as_weak();
+        let shared = shared.clone();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let result = gui_state::list_mode_run(&file, &params);
+            let _ = sender.send((params.output_dir, result));
+        });
+        let timer = timer_analyze.clone();
+        let timer_callback = Rc::downgrade(&timer);
+        timer.start(
+            slint::TimerMode::Repeated,
+            std::time::Duration::from_millis(50),
+            move || {
+                let (dir, result) = match receiver.try_recv() {
+                    Ok(value) => value,
+                    Err(std::sync::mpsc::TryRecvError::Empty) => return,
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        if let Some(timer) = timer_callback.upgrade() {
+                            timer.stop();
+                        }
+                        if let Some(ui) = weak.upgrade() {
+                            report(
+                                &ui,
+                                Err(
+                                    "Analysis worker stopped unexpectedly. Partial files may remain."
+                                        .into(),
+                                ),
+                            );
+                        }
+                        return;
+                    }
+                };
+                if let Some(timer) = timer_callback.upgrade() {
+                    timer.stop();
+                }
+                let Some(ui) = weak.upgrade() else {
+                    return;
+                };
+                match result {
+                    Ok(paths) => {
+                        ui.set_results(joined(&paths).into());
+                        ui.set_has_results(true);
+                        shared.borrow_mut().result_directory = Some(dir);
+                        report(
+                            &ui,
+                            Ok(format!(
+                                "Analysis complete · {} files generated.",
+                                paths.len()
+                            )),
+                        );
+                    }
+                    Err(e) => {
+                        ui.set_results("Analysis failed. See the message below.".into());
                         report(&ui, Err(e));
                     }
                 }
@@ -487,6 +710,98 @@ mod tests {
         assert!(
             clicked.get(),
             "Convert must be reachable after scrolling to the bottom"
+        );
+    }
+
+    #[test]
+    fn list_mode_panel_switches_and_edits_rows() {
+        use i_slint_backend_testing::ElementHandle;
+        // The Slint platform is per thread; each test sets its own.
+        slint::platform::set_platform(Box::new(i_slint_backend_testing::TestingBackend::new(
+            i_slint_backend_testing::TestingBackendOptions {
+                mock_time: true,
+                renderer_name: Some("software".into()),
+                ..Default::default()
+            },
+        )))
+        .unwrap();
+        let ui = MainWindow::new().unwrap();
+        ui.window().set_size(slint::LogicalSize::new(760., 820.));
+        ui.show().unwrap();
+        let rois = Rc::new(VecModel::from(vec![blank_roi()]));
+        ui.set_rois(rois.clone().into());
+        ui.set_roi_units(strings(["keV".into(), "Channel".into()]));
+        let model = rois.clone();
+        ui.on_add_roi(move || model.push(blank_roi()));
+        let model = rois.clone();
+        ui.on_remove_roi(move |index| {
+            model.remove(index as usize);
+        });
+        let analyzed = Rc::new(std::cell::Cell::new(false));
+        let result = analyzed.clone();
+        ui.on_analyze(move || result.set(true));
+        ui.on_convert(|| panic!("list mode must not convert"));
+        let labelled = |label: &str| ElementHandle::find_by_accessible_label(&ui, label).count();
+        let placeholder = |text: &str| {
+            ElementHandle::find_by_element_type_name(&ui, "LineEdit")
+                .filter(|e| e.accessible_placeholder_text().as_deref() == Some(text))
+                .collect::<Vec<_>>()
+        };
+
+        assert_eq!(labelled("Add ROI"), 0, "converter panel by default");
+        assert_eq!(placeholder("Final channel").len(), 1);
+        ui.set_list_mode(true);
+        assert_eq!(labelled("Add ROI"), 1, "list-mode panel shown");
+        assert!(placeholder("Final channel").is_empty(), "converter hidden");
+
+        ElementHandle::find_by_accessible_label(&ui, "Add ROI")
+            .next()
+            .unwrap()
+            .invoke_accessible_default_action();
+        assert_eq!(rois.row_count(), 2);
+        assert_eq!(placeholder("Name").len(), 2);
+        // Typing into a row writes through to the Rust-owned model.
+        placeholder("Name")[0].set_accessible_value("peak");
+        placeholder("High")[1].set_accessible_value("35");
+        assert_eq!(rois.row_data(0).unwrap().name, "peak");
+        assert_eq!(rois.row_data(1).unwrap().high, "35");
+
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
+        let remove = ElementHandle::find_by_accessible_label(&ui, "Remove")
+            .last()
+            .unwrap();
+        let right = remove.absolute_position().x + remove.size().width;
+        assert!(right <= 760., "ROI row must fit the minimum width: {right}");
+        remove.invoke_accessible_default_action();
+        assert_eq!(rois.row_count(), 1);
+        assert_eq!(rois.row_data(0).unwrap().name, "peak");
+        assert_eq!(placeholder("Name").len(), 1);
+
+        ui.set_loaded(true);
+        // Element search skips items scrolled out of view; scroll to the footer.
+        ui.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerScrolled {
+                position: slint::LogicalPosition::new(10., 200.),
+                delta_x: 0.,
+                delta_y: -5000.,
+            });
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(500));
+        ElementHandle::find_by_accessible_label(&ui, "Run list-mode analysis")
+            .next()
+            .expect("footer button relabelled in list mode")
+            .invoke_accessible_default_action();
+        assert!(
+            analyzed.get(),
+            "footer button runs the analysis in list mode"
+        );
+
+        ui.set_list_mode(false);
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
+        assert_eq!(labelled("Run list-mode analysis"), 0);
+        assert_eq!(
+            labelled("Convert measurement"),
+            1,
+            "converter footer restored"
         );
     }
 }
