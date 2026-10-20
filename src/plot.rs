@@ -11,6 +11,7 @@ use std::{
 use plotters::prelude::*;
 use plotters::style::Palette;
 
+use crate::kde::gaussian_kde;
 use crate::rate::RateBin;
 
 /// Errors rendering a rate-vs-time PNG.
@@ -116,6 +117,111 @@ pub fn rate_vs_time(
     Ok(())
 }
 
+/// Render one filled-polygon violin per named group to a PNG at
+/// `output_path`. Each violin is built from `kde::gaussian_kde` over that
+/// group's values and positioned side by side with its label along the
+/// x-axis.
+///
+/// Never overwrites an existing file at `output_path` (the same
+/// `create_new` atomic claim as `rate_vs_time`, since `plotters-bitmap`'s
+/// `present()` would otherwise silently overwrite it).
+pub fn violin(groups: &[(String, Vec<f64>)], output_path: &Path) -> Result<(), PlotError> {
+    match OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output_path)
+    {
+        Ok(_) => {}
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {
+            return Err(PlotError::AlreadyExists(output_path.to_path_buf()));
+        }
+        Err(e) => return Err(PlotError::Io(e)),
+    }
+
+    let n = groups.len().max(1);
+    let all_values: Vec<f64> = groups.iter().flat_map(|(_, v)| v.iter().copied()).collect();
+    let (mut y_min, mut y_max) = if all_values.is_empty() {
+        (0.0, 1.0)
+    } else {
+        let lo = all_values.iter().cloned().fold(f64::INFINITY, f64::min);
+        let hi = all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        (lo, hi)
+    };
+    if y_max <= y_min {
+        y_min -= 1.0;
+        y_max += 1.0;
+    }
+    let span = y_max - y_min;
+    let margin = span * 0.12;
+    let y_axis_min = y_min - margin * 1.6;
+    let y_axis_max = y_max + margin;
+
+    let root = BitMapBackend::new(output_path, (1200, 800)).into_drawing_area();
+    root.fill(&WHITE)
+        .map_err(|e| PlotError::Draw(e.to_string()))?;
+
+    let mut chart = ChartBuilder::on(&root)
+        .caption("Rate distribution per window", ("sans-serif", 24))
+        .margin(15)
+        .x_label_area_size(45)
+        .y_label_area_size(60)
+        .build_cartesian_2d(0f64..n as f64, y_axis_min..y_axis_max)
+        .map_err(|e| PlotError::Draw(e.to_string()))?;
+
+    chart
+        .configure_mesh()
+        .disable_x_mesh()
+        .x_label_formatter(&|_| String::new())
+        .y_desc("Rate [Yield/s]")
+        .draw()
+        .map_err(|e| PlotError::Draw(e.to_string()))?;
+
+    let steps = 200usize;
+    let eval_points: Vec<f64> = (0..=steps)
+        .map(|i| y_min + span * (i as f64) / (steps as f64))
+        .collect();
+
+    for (i, (name, values)) in groups.iter().enumerate() {
+        let center = i as f64 + 0.5;
+        let half_width = 0.4;
+        let densities = gaussian_kde(values, &eval_points);
+        let max_density = densities.iter().cloned().fold(0.0f64, f64::max);
+        let scale = if max_density > 0.0 {
+            half_width / max_density
+        } else {
+            0.0
+        };
+
+        let mut polygon_points: Vec<(f64, f64)> = Vec::with_capacity(eval_points.len() * 2);
+        for (y, d) in eval_points.iter().zip(&densities) {
+            polygon_points.push((center - d * scale, *y));
+        }
+        for (y, d) in eval_points.iter().zip(&densities).rev() {
+            polygon_points.push((center + d * scale, *y));
+        }
+
+        let color = Palette99::pick(i).to_rgba();
+        chart
+            .draw_series(std::iter::once(Polygon::new(
+                polygon_points,
+                color.mix(0.6),
+            )))
+            .map_err(|e| PlotError::Draw(e.to_string()))?;
+
+        let label_y = y_min - margin * 0.8;
+        chart
+            .draw_series(std::iter::once(Text::new(
+                name.clone(),
+                (center, label_y),
+                ("sans-serif", 14).into_font().color(&BLACK),
+            )))
+            .map_err(|e| PlotError::Draw(e.to_string()))?;
+    }
+
+    root.present().map_err(|e| PlotError::Draw(e.to_string()))?;
+    Ok(())
+}
+
 /// Write `bins` as CSV (header `time_s,rate,rate_err,counts`, one row per
 /// bin) to `output_path`.
 ///
@@ -202,6 +308,38 @@ mod tests {
             ("roi-b".to_string(), vec![bin(0.5, 1.0, 1.0, 1)]),
         ];
         rate_vs_time(&series, &path).unwrap();
+        let metadata = fs::metadata(&path).unwrap();
+        assert!(metadata.len() > 0);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn violin_refuses_to_overwrite() {
+        let dir = std::env::temp_dir().join(format!(
+            "moulinette-plot-test-violin-ov-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("violin.png");
+        fs::write(&path, b"existing").unwrap();
+        let err = violin(&[], &path).unwrap_err();
+        assert!(matches!(err, PlotError::AlreadyExists(p) if p == path));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn violin_renders_a_png() {
+        let dir = std::env::temp_dir().join(format!(
+            "moulinette-plot-test-violin-ok-{}",
+            std::process::id()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("violin.png");
+        let groups = vec![
+            ("0-10".to_string(), vec![1.0, 2.0, 2.0, 3.0]),
+            ("10-20".to_string(), vec![4.0, 5.0, 5.0, 6.0]),
+        ];
+        violin(&groups, &path).unwrap();
         let metadata = fs::metadata(&path).unwrap();
         assert!(metadata.len() > 0);
         fs::remove_dir_all(&dir).ok();
