@@ -101,6 +101,30 @@
         "ticket": "02-roi-and-time-binned-rate",
         "commit": "1dc972c"
       }
+    },
+    {
+      "at": "2026-10-20T09:18:55.169Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/03-rate-vs-time-plot-and-cli.md",
+        "03-implement/03-rate-vs-time-plot-and-cli/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-rate-vs-time-plot-and-cli"
+      }
+    },
+    {
+      "at": "2026-10-20T09:40:04.071Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/03-rate-vs-time-plot-and-cli/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-rate-vs-time-plot-and-cli",
+        "commit": "ef6ab90"
+      }
     }
   ],
   "current_phase": "ship",
