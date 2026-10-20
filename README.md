@@ -24,7 +24,7 @@ cargo build --release --bins
 ```
 
 For development use `cargo run --bin moulinette-gui`. `cargo run` continues to
-launch the CLI by default. For a dependency-free CLI-only build use
+launch the CLI by default. For a CLI-only build without the GUI toolkit use
 `cargo build --release --no-default-features --bin moulinette`.
 
 ```text
@@ -61,8 +61,9 @@ loading, output planning, batch validation and exclusive writing between the
 CLI and GUI. `gui_state` maps GUI settings without depending on Slint, allowing
 direct testing. `src/gui.rs` owns state and worker orchestration; `ui/main.slint`
 and `ui/components/` contain presentation compiled by `build.rs`.
-CLI-only builds need no external dependencies. Handwritten Rust avoids unsafe
-code; generated Slint bindings use toolkit-managed unsafe code.
+CLI-only builds still depend on `plotters` (for `list`'s rate-vs-time PNG
+output); they no longer need Slint, rfd or winsafe. Handwritten Rust avoids
+unsafe code; generated Slint bindings use toolkit-managed unsafe code.
 Calibration metadata is required only for EY. The parser accepts positive
 channel counts up to a configurable default of 1,000,000 per spectrum; blank
 and nonnumeric counts remain text. Metadata lookup applies the legacy first
