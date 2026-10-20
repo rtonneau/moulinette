@@ -1,0 +1,219 @@
+{
+  "session_id": "2026-10-20__adding-new-list-mode-file-conversion-example-in-d-onedrive",
+  "feature_name": "Adding new list mode file conversion. Example in 'D:\\OneDrive - Université de Namur\\JupyterLab\\PFAS/PIGE/test_mpa3kit.ipynb' using custom mpa3kit python library accessible at 'C:\\DEV\\python\\mpa3kit'. The soft should be able to load .lst files and also make some plot of acquisition rate versus time (like in cell 11) and also violin plots like cell 13. If possible to use a similar approach as 'import ruptures as rpt' to detect changes of rate, it is a plus",
+  "scratch_dir": ".scratch/tests/2026-10-20__adding-new-list-mode-file-conversion-example-in-d-onedrive",
+  "created_at": "2026-10-20T08:26:10.876Z",
+  "template_version": 2,
+  "history": [
+    {
+      "at": "2026-10-20T08:26:10.876Z",
+      "event": "session_started",
+      "phase": "grill",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-20T08:56:31.307Z",
+      "event": "grill_written",
+      "phase": "plan-not-started",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-20T08:56:36.126Z",
+      "event": "plan_started",
+      "phase": "plan",
+      "files": [
+        "02-plan/plan.md"
+      ]
+    },
+    {
+      "at": "2026-10-20T09:02:06.695Z",
+      "event": "branch_created",
+      "phase": "plan",
+      "detail": {
+        "branch": "feat/list-mode-analysis",
+        "base": "main"
+      }
+    },
+    {
+      "at": "2026-10-20T09:02:06.730Z",
+      "event": "plan_written",
+      "phase": "ship",
+      "files": [
+        "02-plan/plan.md",
+        "02-plan/tickets/01-lst-binary-parser.md",
+        "02-plan/tickets/02-roi-and-time-binned-rate.md",
+        "02-plan/tickets/03-rate-vs-time-plot-and-cli.md",
+        "02-plan/tickets/04-violin-plot.md",
+        "02-plan/tickets/05-gui-list-mode-panel.md"
+      ],
+      "detail": {
+        "tickets": 5
+      }
+    },
+    {
+      "at": "2026-10-20T09:03:44.348Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/01-lst-binary-parser.md",
+        "03-implement/01-lst-binary-parser/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "01-lst-binary-parser"
+      }
+    },
+    {
+      "at": "2026-10-20T09:14:08.060Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/01-lst-binary-parser/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "01-lst-binary-parser",
+        "commit": "03d11d5"
+      }
+    },
+    {
+      "at": "2026-10-20T09:14:14.697Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/02-roi-and-time-binned-rate.md",
+        "03-implement/02-roi-and-time-binned-rate/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-roi-and-time-binned-rate"
+      }
+    },
+    {
+      "at": "2026-10-20T09:18:49.771Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/02-roi-and-time-binned-rate/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-roi-and-time-binned-rate",
+        "commit": "1dc972c"
+      }
+    },
+    {
+      "at": "2026-10-20T09:18:55.169Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/03-rate-vs-time-plot-and-cli.md",
+        "03-implement/03-rate-vs-time-plot-and-cli/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-rate-vs-time-plot-and-cli"
+      }
+    },
+    {
+      "at": "2026-10-20T09:40:04.071Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/03-rate-vs-time-plot-and-cli/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-rate-vs-time-plot-and-cli",
+        "commit": "ef6ab90"
+      }
+    },
+    {
+      "at": "2026-10-20T09:40:11.400Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/04-violin-plot.md",
+        "03-implement/04-violin-plot/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-violin-plot"
+      }
+    },
+    {
+      "at": "2026-10-20T09:50:43.926Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/04-violin-plot/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-violin-plot",
+        "commit": "ec2e390"
+      }
+    },
+    {
+      "at": "2026-10-20T09:50:49.454Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/05-gui-list-mode-panel.md",
+        "03-implement/05-gui-list-mode-panel/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "05-gui-list-mode-panel"
+      }
+    },
+    {
+      "at": "2026-10-20T10:12:42.720Z",
+      "event": "ticket_done",
+      "phase": "finish-pending",
+      "files": [
+        "03-implement/05-gui-list-mode-panel/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "05-gui-list-mode-panel",
+        "commit": "8e72847"
+      }
+    },
+    {
+      "at": "2026-10-20T10:13:02.006Z",
+      "event": "changelog_written",
+      "phase": "finish-pending",
+      "detail": {
+        "bump": "minor"
+      }
+    },
+    {
+      "at": "2026-10-20T10:13:13.273Z",
+      "event": "pr_opened",
+      "phase": "finish-pending",
+      "detail": {
+        "url": "https://github.com/rtonneau/moulinette/pull/1"
+      }
+    },
+    {
+      "at": "2026-10-20T10:13:13.275Z",
+      "event": "session_finished",
+      "phase": "finished",
+      "files": [
+        "INDEX.md"
+      ]
+    }
+  ],
+  "current_phase": "finished",
+  "git": {
+    "branch": "feat/list-mode-analysis",
+    "base_branch": "main",
+    "branch_created_at": "2026-10-20T09:02:06.695Z",
+    "pr_url": "https://github.com/rtonneau/moulinette/pull/1"
+  },
+  "ship_mode": "subagent+inline",
+  "changelog": {
+    "bump": "minor",
+    "floor": "minor",
+    "reason": null,
+    "bullets": 4,
+    "path": ".work/changelog/2026-10-20__adding-new-list-mode-file-conversion-example-in-d-onedrive.md",
+    "written_at": "2026-10-20T10:13:01.986Z"
+  },
+  "finished_at": "2026-10-20T10:13:13.275Z"
+}

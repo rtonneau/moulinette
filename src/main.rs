@@ -1,11 +1,13 @@
 #![forbid(unsafe_code)]
 use moulinette::{
     conversion::{self, Format, Selection},
+    lst, plot,
+    rate::{self, Roi},
     workflow,
 };
 use std::{env, ffi::OsString, path::PathBuf, process::ExitCode};
 
-const HELP: &str = "Moulinette — static-analysis-based native MPA converter\n\nUsage:\n  moulinette formats\n  moulinette convert INPUT --format FORMAT --output FILE [--spectrum N]\n  moulinette convert INPUT --format FORMAT --output-dir DIR [--spectrum N]\n\nOptions:\n  --spectrum N  One-based DATA occurrence (required for single output with multiple spectra)\n  --start N     Zero-based inclusive first channel (default 0)\n  --end N       Zero-based inclusive last channel (default final channel)\n\nExisting output files are never overwritten. TOF always emits all channels.\n";
+const HELP: &str = "Moulinette — static-analysis-based native MPA converter\n\nUsage:\n  moulinette formats\n  moulinette convert INPUT --format FORMAT --output FILE [--spectrum N]\n  moulinette convert INPUT --format FORMAT --output-dir DIR [--spectrum N]\n  moulinette list INPUT --roi NAME:ADC:LOW:HIGH[:unit] [--roi ...] --output-dir DIR [--dt-ms N] [--window START_S:END_S ...]\n\nOptions:\n  --spectrum N  One-based DATA occurrence (required for single output with multiple spectra)\n  --start N     Zero-based inclusive first channel (default 0)\n  --end N       Zero-based inclusive last channel (default final channel)\n  --roi NAME:ADC:LOW:HIGH[:unit]  ROI on one ADC's spectrum (repeatable, at least one required);\n                unit is 'ch' (channel bounds) or 'kev' (energy bounds, default)\n  --dt-ms N     Time-bin width in milliseconds (default 15000)\n  --window START_S:END_S  Time window in seconds for a per-ROI violin plot of the\n                rate distribution (repeatable); when given at least once, one\n                violin PNG per ROI is written in addition to the rate-vs-time output\n\nExisting output files are never overwritten. TOF always emits all channels.\n";
 
 #[derive(Debug)]
 struct Options {
@@ -95,6 +97,232 @@ fn options(args: Vec<OsString>) -> Result<Options, String> {
     })
 }
 
+/// Unit a `--roi` value's LOW/HIGH bounds are expressed in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RoiUnit {
+    Channel,
+    Kev,
+}
+
+/// One parsed `--roi NAME:ADC:LOW:HIGH[:unit]` value.
+#[derive(Debug, Clone, PartialEq)]
+struct RoiSpec {
+    name: String,
+    adc: u8,
+    low: f64,
+    high: f64,
+    unit: RoiUnit,
+}
+
+/// Parse one `--roi` value: `NAME:ADC:LOW:HIGH[:unit]`, `unit` defaulting
+/// to `kev` when omitted.
+fn parse_roi_spec(value: &str) -> Result<RoiSpec, String> {
+    let parts: Vec<&str> = value.split(':').collect();
+    if parts.len() != 4 && parts.len() != 5 {
+        return Err(format!(
+            "--roi value {value:?} must have the form NAME:ADC:LOW:HIGH[:unit]"
+        ));
+    }
+    let name = parts[0];
+    if name.is_empty() {
+        return Err(format!("--roi value {value:?} has an empty NAME"));
+    }
+    let adc = parts[1]
+        .parse::<u8>()
+        .map_err(|_| format!("--roi value {value:?} has a non-numeric or out-of-range ADC"))?;
+    let low = parts[2]
+        .parse::<f64>()
+        .map_err(|_| format!("--roi value {value:?} has a non-numeric LOW bound"))?;
+    let high = parts[3]
+        .parse::<f64>()
+        .map_err(|_| format!("--roi value {value:?} has a non-numeric HIGH bound"))?;
+    let unit = match parts.get(4).copied() {
+        None | Some("kev") => RoiUnit::Kev,
+        Some("ch") => RoiUnit::Channel,
+        Some(other) => {
+            return Err(format!(
+                "--roi value {value:?} has unknown unit {other:?}; expected 'ch' or 'kev'"
+            ));
+        }
+    };
+    Ok(RoiSpec {
+        name: name.to_string(),
+        adc,
+        low,
+        high,
+        unit,
+    })
+}
+
+/// One parsed `--window START_S:END_S` value: a half-open `[start_s,
+/// end_s)` time window in seconds, used to split a `RateBin` series for
+/// a per-window violin plot.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct WindowSpec {
+    start_s: f64,
+    end_s: f64,
+}
+
+/// Parse one `--window` value: `START_S:END_S`, requiring `start_s <
+/// end_s`.
+fn parse_window_spec(value: &str) -> Result<WindowSpec, String> {
+    let parts: Vec<&str> = value.split(':').collect();
+    if parts.len() != 2 {
+        return Err(format!(
+            "--window value {value:?} must have the form START_S:END_S"
+        ));
+    }
+    let start_s = parts[0]
+        .parse::<f64>()
+        .map_err(|_| format!("--window value {value:?} has a non-numeric START_S"))?;
+    let end_s = parts[1]
+        .parse::<f64>()
+        .map_err(|_| format!("--window value {value:?} has a non-numeric END_S"))?;
+    if start_s.is_nan() || end_s.is_nan() || start_s >= end_s {
+        return Err(format!(
+            "--window value {value:?} must have START_S < END_S"
+        ));
+    }
+    Ok(WindowSpec { start_s, end_s })
+}
+
+#[derive(Debug)]
+struct ListOptions {
+    input: PathBuf,
+    rois: Vec<RoiSpec>,
+    dt_ms: u64,
+    output_dir: PathBuf,
+    windows: Vec<WindowSpec>,
+}
+
+fn list_options(args: Vec<OsString>) -> Result<ListOptions, String> {
+    let mut args = args.into_iter();
+    let input = args.next().ok_or("list requires an input path")?;
+    if input.to_string_lossy().starts_with("--") {
+        return Err("list requires an input path before options".into());
+    }
+    let mut rois = Vec::new();
+    let mut dt_ms = None;
+    let mut output_dir = None;
+    let mut windows = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+    while let Some(option) = args.next() {
+        let name = option.to_str().ok_or("option names must be ASCII")?;
+        if !["--roi", "--dt-ms", "--output-dir", "--window"].contains(&name) {
+            return Err(format!("unknown option {name:?}"));
+        }
+        if name != "--roi" && name != "--window" && !seen.insert(name.to_string()) {
+            return Err(format!("duplicate option {name}"));
+        }
+        let value = args
+            .next()
+            .ok_or_else(|| format!("{name} requires a value"))?;
+        match name {
+            "--roi" => {
+                let value_str = value.to_str().ok_or("--roi value must be ASCII")?;
+                rois.push(parse_roi_spec(value_str)?);
+            }
+            "--dt-ms" => dt_ms = Some(integer(&value, name)? as u64),
+            "--output-dir" => output_dir = Some(PathBuf::from(value)),
+            "--window" => {
+                let value_str = value.to_str().ok_or("--window value must be ASCII")?;
+                windows.push(parse_window_spec(value_str)?);
+            }
+            _ => unreachable!(),
+        }
+    }
+    if rois.is_empty() {
+        return Err("list requires at least one --roi".into());
+    }
+    Ok(ListOptions {
+        input: input.into(),
+        rois,
+        dt_ms: dt_ms.unwrap_or(15_000),
+        output_dir: output_dir.ok_or("--output-dir is required")?,
+        windows,
+    })
+}
+
+fn run_list(opts: ListOptions) -> Result<(), Box<dyn std::error::Error>> {
+    let bytes = std::fs::read(&opts.input)
+        .map_err(|e| format!("cannot read {}: {e}", opts.input.display()))?;
+    let file = lst::parse(&bytes).map_err(|e| e.to_string())?;
+
+    let mut series: Vec<(String, Vec<rate::RateBin>)> = Vec::new();
+    for spec in &opts.rois {
+        let roi = match spec.unit {
+            RoiUnit::Channel => Roi::from_channels(
+                spec.adc,
+                spec.low.round() as u32,
+                spec.high.round() as u32,
+                spec.name.clone(),
+            ),
+            RoiUnit::Kev => {
+                let header = file
+                    .adc_headers
+                    .iter()
+                    .find(|h| h.adc_index == spec.adc)
+                    .ok_or_else(|| {
+                        format!("no ADC{} header found for --roi {}", spec.adc, spec.name)
+                    })?;
+                Roi::from_energy(header, spec.low, spec.high, spec.name.clone())
+                    .map_err(|e| e.to_string())?
+            }
+        };
+        let bins = rate::time_binned_rate(&file.events, spec.adc, Some(&roi), 0, None, opts.dt_ms);
+        series.push((spec.name.clone(), bins));
+    }
+
+    let output_dir = &opts.output_dir;
+    std::fs::create_dir_all(output_dir)
+        .map_err(|e| format!("cannot create {}: {e}", output_dir.display()))?;
+
+    let mut csv_paths = Vec::new();
+    for (name, _) in &series {
+        csv_paths.push(output_dir.join(format!("{name}.csv")));
+    }
+    let png_path = output_dir.join("rate_vs_time.png");
+    let mut violin_paths = Vec::new();
+    if !opts.windows.is_empty() {
+        for (name, _) in &series {
+            violin_paths.push(output_dir.join(format!("{name}_violin.png")));
+        }
+    }
+    let mut all_paths: Vec<&PathBuf> = csv_paths.iter().chain(violin_paths.iter()).collect();
+    all_paths.push(&png_path);
+    for (i, path) in all_paths.iter().enumerate() {
+        if all_paths[..i].contains(path) {
+            return Err(format!("duplicate output destination {}", path.display()).into());
+        }
+    }
+
+    for (path, (_, bins)) in csv_paths.iter().zip(&series) {
+        plot::write_rate_csv(bins, path)?;
+        println!("{}", path.display());
+    }
+    plot::rate_vs_time(&series, &png_path)?;
+    println!("{}", png_path.display());
+
+    for (path, (_, bins)) in violin_paths.iter().zip(&series) {
+        let groups: Vec<(String, Vec<f64>)> = opts
+            .windows
+            .iter()
+            .map(|w| {
+                let label = format!("{}:{}", w.start_s, w.end_s);
+                let values = bins
+                    .iter()
+                    .filter(|b| b.time_s >= w.start_s && b.time_s < w.end_s)
+                    .map(|b| b.rate)
+                    .collect();
+                (label, values)
+            })
+            .collect();
+        plot::violin(&groups, path)?;
+        println!("{}", path.display());
+    }
+    Ok(())
+}
+
 fn run_convert(opts: Options) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(reason) = opts.format.unsupported_reason() {
         return Err(conversion::ConversionError::Unsupported {
@@ -169,7 +397,15 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
             run_convert(options(args)?)
         }
-        _ => Err("unknown command; use 'help', 'formats' or 'convert'".into()),
+        Some("list") => {
+            let args: Vec<_> = args.collect();
+            if args.len() == 1 && args[0] == "--help" {
+                print!("{HELP}");
+                return Ok(());
+            }
+            run_list(list_options(args)?)
+        }
+        _ => Err("unknown command; use 'help', 'formats', 'convert' or 'list'".into()),
     }
 }
 fn main() -> ExitCode {
@@ -207,5 +443,231 @@ mod tests {
         ] {
             assert!(options(args(text)).is_err(), "{text}");
         }
+    }
+
+    #[test]
+    fn list_options_valid_invocation() {
+        let opts = list_options(args(
+            "input.lst --roi peak:1:20:35:kev --dt-ms 2000 --output-dir out",
+        ))
+        .unwrap();
+        assert_eq!(opts.input, PathBuf::from("input.lst"));
+        assert_eq!(opts.rois.len(), 1);
+        assert_eq!(opts.rois[0].name, "peak");
+        assert_eq!(opts.rois[0].adc, 1);
+        assert_eq!(opts.rois[0].low, 20.0);
+        assert_eq!(opts.rois[0].high, 35.0);
+        assert_eq!(opts.rois[0].unit, RoiUnit::Kev);
+        assert_eq!(opts.dt_ms, 2000);
+        assert_eq!(opts.output_dir, PathBuf::from("out"));
+    }
+
+    #[test]
+    fn list_options_default_unit_and_dt_ms() {
+        let opts = list_options(args("input.lst --roi peak:1:20:35 --output-dir out")).unwrap();
+        assert_eq!(opts.rois[0].unit, RoiUnit::Kev);
+        assert_eq!(opts.dt_ms, 15_000);
+    }
+
+    #[test]
+    fn list_options_missing_roi_errors() {
+        let err = list_options(args("input.lst --output-dir out")).unwrap_err();
+        assert!(err.contains("--roi"), "{err}");
+    }
+
+    #[test]
+    fn list_options_malformed_roi_errors() {
+        for text in [
+            "input.lst --roi peak:1:20 --output-dir out",
+            "input.lst --roi peak:x:20:35 --output-dir out",
+            "input.lst --roi peak:1:x:35 --output-dir out",
+            "input.lst --roi peak:1:20:35:bogus --output-dir out",
+            "input.lst --roi :1:20:35 --output-dir out",
+        ] {
+            assert!(list_options(args(text)).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn list_options_duplicate_output_dir_errors() {
+        let err = list_options(args(
+            "input.lst --roi peak:1:20:35 --output-dir out --output-dir out2",
+        ))
+        .unwrap_err();
+        assert!(err.contains("duplicate"), "{err}");
+    }
+
+    fn le(words: &[u16]) -> Vec<u8> {
+        words.iter().flat_map(|w| w.to_le_bytes()).collect()
+    }
+
+    /// A synthetic `.lst` fixture with one ADC (linear, `caloff=0`,
+    /// `calfact=1`, so energy == channel) and four events on ADC1:
+    /// channel 25 at t=0ms, channel 30 at t=100ms (both inside a [20,35]
+    /// ROI), channel 10 at t=1200ms and channel 99 at t=1300ms (both
+    /// outside it). `timerreduce=100` keeps the fixture small.
+    fn synthetic_lst_fixture() -> Vec<u8> {
+        let mut bytes =
+            b"[ADC1]\r\ncaloff=0\r\ncalfact=1\r\ntimerreduce=100\r\nnchannels=4096\r\n[LISTDATA]"
+                .to_vec();
+        bytes.extend(le(&[0x0001, 0x0000, 0x0019])); // t=0, channel 25
+        bytes.extend(le(&[0x0000, 0x4000])); // +100ms -> t=100
+        bytes.extend(le(&[0x0001, 0x0000, 0x001E])); // t=100, channel 30
+        for _ in 0..11 {
+            bytes.extend(le(&[0x0000, 0x4000])); // +11*100ms -> t=1200
+        }
+        bytes.extend(le(&[0x0001, 0x0000, 0x000A])); // t=1200, channel 10
+        bytes.extend(le(&[0x0000, 0x4000])); // +100ms -> t=1300
+        bytes.extend(le(&[0x0001, 0x0000, 0x0063])); // t=1300, channel 99
+        bytes
+    }
+
+    #[test]
+    fn list_integration_writes_exact_csv() {
+        let dir =
+            std::env::temp_dir().join(format!("moulinette-cli-list-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input_path = dir.join("fixture.lst");
+        std::fs::write(&input_path, synthetic_lst_fixture()).unwrap();
+        let output_dir = dir.join("out");
+
+        let cli_args = vec![
+            OsString::from(input_path.as_os_str()),
+            OsString::from("--roi"),
+            OsString::from("peak:1:20:35:kev"),
+            OsString::from("--dt-ms"),
+            OsString::from("1000"),
+            OsString::from("--output-dir"),
+            OsString::from(output_dir.as_os_str()),
+        ];
+        run_list(list_options(cli_args).unwrap()).unwrap();
+
+        let csv = std::fs::read_to_string(output_dir.join("peak.csv")).unwrap();
+        assert_eq!(
+            csv,
+            "time_s,rate,rate_err,counts\n0.5,2,1.4142135623730951,2\n1.5,0,0,0\n"
+        );
+        let png_metadata = std::fs::metadata(output_dir.join("rate_vs_time.png")).unwrap();
+        assert!(png_metadata.len() > 0);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_options_window_parses_and_is_repeatable() {
+        let opts = list_options(args(
+            "input.lst --roi peak:1:20:35 --output-dir out --window 0:1 --window 1:2",
+        ))
+        .unwrap();
+        assert_eq!(
+            opts.windows,
+            vec![
+                WindowSpec {
+                    start_s: 0.0,
+                    end_s: 1.0
+                },
+                WindowSpec {
+                    start_s: 1.0,
+                    end_s: 2.0
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn list_options_malformed_window_errors() {
+        for text in [
+            "input.lst --roi peak:1:20:35 --output-dir out --window 0",
+            "input.lst --roi peak:1:20:35 --output-dir out --window x:1",
+            "input.lst --roi peak:1:20:35 --output-dir out --window 0:x",
+            "input.lst --roi peak:1:20:35 --output-dir out --window 2:1",
+            "input.lst --roi peak:1:20:35 --output-dir out --window 1:1",
+        ] {
+            assert!(list_options(args(text)).is_err(), "{text}");
+        }
+    }
+
+    #[test]
+    fn list_options_no_window_defaults_to_empty() {
+        let opts = list_options(args("input.lst --roi peak:1:20:35 --output-dir out")).unwrap();
+        assert!(opts.windows.is_empty());
+    }
+
+    /// With `--window` given, a violin PNG is written per ROI in
+    /// addition to ticket 3's rate-vs-time CSV/PNG output. Uses the
+    /// same fixture as `list_integration_writes_exact_csv` (events at
+    /// t=0.5s and t=1.5s inside the ROI), split into two one-second
+    /// windows so each violin group gets at least one `RateBin`.
+    #[test]
+    fn list_integration_with_window_writes_violin_png() {
+        let dir = std::env::temp_dir().join(format!(
+            "moulinette-cli-list-window-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input_path = dir.join("fixture.lst");
+        std::fs::write(&input_path, synthetic_lst_fixture()).unwrap();
+        let output_dir = dir.join("out");
+
+        let cli_args = vec![
+            OsString::from(input_path.as_os_str()),
+            OsString::from("--roi"),
+            OsString::from("peak:1:20:35:kev"),
+            OsString::from("--dt-ms"),
+            OsString::from("1000"),
+            OsString::from("--output-dir"),
+            OsString::from(output_dir.as_os_str()),
+            OsString::from("--window"),
+            OsString::from("0:1"),
+            OsString::from("--window"),
+            OsString::from("1:2"),
+        ];
+        run_list(list_options(cli_args).unwrap()).unwrap();
+
+        // Ticket 3's output is still produced.
+        assert!(
+            std::fs::metadata(output_dir.join("peak.csv"))
+                .unwrap()
+                .len()
+                > 0
+        );
+        assert!(
+            std::fs::metadata(output_dir.join("rate_vs_time.png"))
+                .unwrap()
+                .len()
+                > 0
+        );
+        // Plus one violin PNG for the ROI.
+        let violin_metadata = std::fs::metadata(output_dir.join("peak_violin.png")).unwrap();
+        assert!(violin_metadata.len() > 0);
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_integration_without_window_writes_no_violin_png() {
+        let dir = std::env::temp_dir().join(format!(
+            "moulinette-cli-list-no-window-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let input_path = dir.join("fixture.lst");
+        std::fs::write(&input_path, synthetic_lst_fixture()).unwrap();
+        let output_dir = dir.join("out");
+
+        let cli_args = vec![
+            OsString::from(input_path.as_os_str()),
+            OsString::from("--roi"),
+            OsString::from("peak:1:20:35:kev"),
+            OsString::from("--dt-ms"),
+            OsString::from("1000"),
+            OsString::from("--output-dir"),
+            OsString::from(output_dir.as_os_str()),
+        ];
+        run_list(list_options(cli_args).unwrap()).unwrap();
+
+        assert!(!output_dir.join("peak_violin.png").exists());
+
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

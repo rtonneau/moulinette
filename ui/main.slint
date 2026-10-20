@@ -1,6 +1,21 @@
 import { Button, ComboBox, LineEdit, CheckBox, TextEdit, Spinner, Palette, ScrollView } from "std-widgets.slint";
 import { Panel } from "components/panel.slint";
 
+// One editable ROI row of the list-mode panel; `unit` indexes `roi-units`.
+export struct RoiRow {
+    name: string,
+    adc: string,
+    low: string,
+    high: string,
+    unit: int,
+}
+
+// One editable violin time window of the list-mode panel, in seconds.
+export struct TimeWindowRow {
+    start-s: string,
+    end-s: string,
+}
+
 export component MainWindow inherits Window {
     title: "Moulinette · Ion Beam Analysis";
     preferred-width: 1080px; preferred-height: 820px;
@@ -25,9 +40,20 @@ export component MainWindow inherits Window {
     in property <string> preview;
     in property <string> results;
     in property <string> warnings;
-    in property <string> status: "Open an MPA measurement to begin.";
+    in property <string> status: "Open an MPA measurement or list-mode file to begin.";
     in property <bool> error;
     in property <string> drop-hint;
+    // List-mode (.lst) analysis panel, shown instead of the converter panel.
+    in property <bool> list-mode;
+    in property <[string]> roi-units;
+    in-out property <[RoiRow]> rois;
+    in-out property <[TimeWindowRow]> time-windows;
+    in-out property <string> bin-width: "15000";
+    callback add-roi();
+    callback remove-roi(int);
+    callback add-time-window();
+    callback remove-time-window(int);
+    callback analyze();
     callback open-input();
     callback input-contains(float, float) -> bool;
     input-contains(x, y) => {
@@ -61,13 +87,65 @@ export component MainWindow inherits Window {
                 padding: 16px; spacing: 8px;
                 HorizontalLayout {
                     Text { text: root.filename; color: root.ink; font-weight: 600; overflow: elide; }
-                    Button { text: "Open .mpa…"; enabled: !root.busy; clicked => { root.open-input(); } }
+                    Button { text: "Open .mpa/.lst…"; enabled: !root.busy; clicked => { root.open-input(); } }
                 }
-                Text { text: root.drop-hint != "" ? root.drop-hint : root.busy ? "Working — file drops are unavailable." : "Drop one .mpa file here, or use Open."; color: root.muted; }
+                Text { text: root.drop-hint != "" ? root.drop-hint : root.busy ? "Working — file drops are unavailable." : "Drop one .mpa or .lst file here, or use Open."; color: root.muted; }
                 Text { text: root.input-path; color: root.muted; overflow: elide; }
             }
         }
-        HorizontalLayout {
+        if root.list-mode: Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 12px;
+                Text { text: "List-mode inspection"; color: root.ink; font-size: 18px; font-weight: 600; }
+                Text { text: "Event summary and ADC calibration from the .lst header"; color: root.muted; wrap: word-wrap; }
+                TextEdit { text: root.inspection; read-only: true; min-height: 80px; max-height: 160px; }
+            }
+        }
+        if root.list-mode: Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 10px;
+                Text { text: "List-mode analysis"; color: root.ink; font-size: 18px; font-weight: 600; }
+                Text { text: "Rate vs. time per ROI, written as CSV and PNG. Time windows add one violin plot per ROI."; color: root.muted; wrap: word-wrap; }
+                Text { text: "Regions of interest · name, ADC (1–8), low and high bounds, unit"; color: root.muted; }
+                for roi[index] in root.rois: HorizontalLayout {
+                    spacing: 8px;
+                    LineEdit { text <=> roi.name; placeholder-text: "Name"; min-width: 80px; horizontal-stretch: 2; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> roi.adc; placeholder-text: "ADC"; min-width: 50px; horizontal-stretch: 1; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> roi.low; placeholder-text: "Low"; min-width: 60px; horizontal-stretch: 1; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> roi.high; placeholder-text: "High"; min-width: 60px; horizontal-stretch: 1; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    ComboBox { model: root.roi-units; current-index <=> roi.unit; min-width: 90px; horizontal-stretch: 0; enabled: !root.busy; selected => { root.settings-changed(); } }
+                    Button { text: "Remove"; enabled: !root.busy; clicked => { root.remove-roi(index); } }
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    Button { text: "Add ROI"; enabled: !root.busy; clicked => { root.add-roi(); } }
+                }
+                Text { text: "Time-bin width (ms)"; color: root.muted; }
+                LineEdit { text <=> root.bin-width; enabled: !root.busy; edited => { root.settings-changed(); } }
+                Text { text: "Violin time windows (s) · optional, start inclusive, end exclusive"; color: root.muted; }
+                for period[index] in root.time-windows: HorizontalLayout {
+                    spacing: 8px;
+                    LineEdit { text <=> period.start-s; placeholder-text: "Start (s)"; min-width: 80px; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> period.end-s; placeholder-text: "End (s)"; min-width: 80px; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    Button { text: "Remove"; enabled: !root.busy; clicked => { root.remove-time-window(index); } }
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    Button { text: "Add time window"; enabled: !root.busy; clicked => { root.add-time-window(); } }
+                }
+                Text { text: "Output directory"; color: root.muted; }
+                HorizontalLayout {
+                    LineEdit { text <=> root.output-path; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    Button { text: "Browse…"; enabled: !root.busy; clicked => { root.choose-output(); } }
+                }
+                Text { text: "Expected files"; color: root.muted; }
+                TextEdit { text: root.preview; read-only: true; min-height: 60px; }
+                Text { text: "Existing files are never overwritten."; color: root.muted; font-size: 12px; }
+            }
+        }
+        if !root.list-mode: HorizontalLayout {
             spacing: 16px;
             Panel {
                 dark: root.dark;
@@ -125,7 +203,11 @@ export component MainWindow inherits Window {
             spacing: 12px;
             if root.busy: Spinner { }
             Text { text: root.status; color: root.error ? (root.dark ? #ffaaaa : #a52626) : root.ink; wrap: word-wrap; }
-            Button { text: root.busy ? "Working…" : "Convert measurement"; primary: true; enabled: root.loaded && !root.busy; clicked => { root.convert(); } }
+            Button {
+                text: root.busy ? "Working…" : root.list-mode ? "Run list-mode analysis" : "Convert measurement";
+                primary: true; enabled: root.loaded && !root.busy;
+                clicked => { if root.list-mode { root.analyze(); } else { root.convert(); } }
+            }
         }
     }
     }
