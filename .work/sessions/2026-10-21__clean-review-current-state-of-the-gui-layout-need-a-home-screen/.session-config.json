@@ -1,0 +1,329 @@
+{
+  "session_id": "2026-10-21__clean-review-current-state-of-the-gui-layout-need-a-home-screen",
+  "feature_name": "Clean/review current state of the GUI layout. Need a home screen to decide whether Analyze or conversion will be performed. both .lst files and .mpa files should be convertible and analysable. Analysis part should be able to display a dynamic graph",
+  "scratch_dir": ".scratch/tests/2026-10-21__clean-review-current-state-of-the-gui-layout-need-a-home-screen",
+  "created_at": "2026-10-21T09:55:41.319Z",
+  "template_version": 2,
+  "history": [
+    {
+      "at": "2026-10-21T09:55:41.319Z",
+      "event": "session_started",
+      "phase": "grill",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-21T10:29:11.661Z",
+      "event": "grill_written",
+      "phase": "plan-not-started",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-21T10:30:15.722Z",
+      "event": "auto_started",
+      "phase": "plan-not-started",
+      "detail": {
+        "target": "finish",
+        "steps": "plan → write:plan → ship → finish",
+        "shipMode": "subagent+inline"
+      }
+    },
+    {
+      "at": "2026-10-21T10:30:23.244Z",
+      "event": "plan_started",
+      "phase": "plan",
+      "files": [
+        "02-plan/plan.md"
+      ]
+    },
+    {
+      "at": "2026-10-21T10:33:48.169Z",
+      "event": "branch_created",
+      "phase": "plan",
+      "detail": {
+        "branch": "feat/home-screen-cross-format-analysis",
+        "base": "main"
+      }
+    },
+    {
+      "at": "2026-10-21T10:33:48.213Z",
+      "event": "plan_written",
+      "phase": "ship",
+      "files": [
+        "02-plan/plan.md",
+        "02-plan/tickets/01-home-screen-navigation.md",
+        "02-plan/tickets/02-lst-histogram-spectrum.md",
+        "02-plan/tickets/03-wire-lst-convert.md",
+        "02-plan/tickets/04-mpa-roi-statistics.md",
+        "02-plan/tickets/05-wire-mpa-analyze.md",
+        "02-plan/tickets/06-interactive-chart-core.md",
+        "02-plan/tickets/07-interactive-violin-and-spectrum.md",
+        "02-plan/tickets/08-charge-normalized-format.md",
+        "02-plan/tickets/09-charge-axis-analysis.md"
+      ],
+      "detail": {
+        "tickets": 9
+      }
+    },
+    {
+      "at": "2026-10-21T10:34:08.825Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/01-home-screen-navigation.md",
+        "03-implement/01-home-screen-navigation/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "01-home-screen-navigation"
+      }
+    },
+    {
+      "at": "2026-10-21T10:49:55.839Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/01-home-screen-navigation/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "01-home-screen-navigation",
+        "commit": "2a8f3e7"
+      }
+    },
+    {
+      "at": "2026-10-21T10:50:01.296Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/02-lst-histogram-spectrum.md",
+        "03-implement/02-lst-histogram-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-lst-histogram-spectrum"
+      }
+    },
+    {
+      "at": "2026-10-21T10:54:32.140Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/02-lst-histogram-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-lst-histogram-spectrum",
+        "commit": "0f03895"
+      }
+    },
+    {
+      "at": "2026-10-21T10:54:37.561Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/03-wire-lst-convert.md",
+        "03-implement/03-wire-lst-convert/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-wire-lst-convert"
+      }
+    },
+    {
+      "at": "2026-10-21T10:58:58.344Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/03-wire-lst-convert/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-wire-lst-convert",
+        "commit": "ebd058f"
+      }
+    },
+    {
+      "at": "2026-10-21T10:59:03.578Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/04-mpa-roi-statistics.md",
+        "03-implement/04-mpa-roi-statistics/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-mpa-roi-statistics"
+      }
+    },
+    {
+      "at": "2026-10-21T11:08:02.365Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/04-mpa-roi-statistics/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-mpa-roi-statistics",
+        "commit": "7f976fb"
+      }
+    },
+    {
+      "at": "2026-10-21T11:08:07.816Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/05-wire-mpa-analyze.md",
+        "03-implement/05-wire-mpa-analyze/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "05-wire-mpa-analyze"
+      }
+    },
+    {
+      "at": "2026-10-21T11:28:46.217Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/05-wire-mpa-analyze/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "05-wire-mpa-analyze",
+        "commit": "72dc0b3"
+      }
+    },
+    {
+      "at": "2026-10-21T11:28:52.167Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/06-interactive-chart-core.md",
+        "03-implement/06-interactive-chart-core/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "06-interactive-chart-core"
+      }
+    },
+    {
+      "at": "2026-10-21T16:40:49.667Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/06-interactive-chart-core/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "06-interactive-chart-core",
+        "commit": "85fdc5b"
+      }
+    },
+    {
+      "at": "2026-10-21T16:41:09.555Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/07-interactive-violin-and-spectrum.md",
+        "03-implement/07-interactive-violin-and-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "07-interactive-violin-and-spectrum"
+      }
+    },
+    {
+      "at": "2026-10-21T17:01:42.542Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/07-interactive-violin-and-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "07-interactive-violin-and-spectrum",
+        "commit": "ee694ee"
+      }
+    },
+    {
+      "at": "2026-10-21T17:01:50.849Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/08-charge-normalized-format.md",
+        "03-implement/08-charge-normalized-format/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "08-charge-normalized-format"
+      }
+    },
+    {
+      "at": "2026-10-21T17:21:22.762Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/08-charge-normalized-format/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "08-charge-normalized-format",
+        "commit": "c139d36"
+      }
+    },
+    {
+      "at": "2026-10-21T17:21:37.765Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/09-charge-axis-analysis.md",
+        "03-implement/09-charge-axis-analysis/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "09-charge-axis-analysis"
+      }
+    },
+    {
+      "at": "2026-10-21T17:37:57.049Z",
+      "event": "ticket_done",
+      "phase": "finish-pending",
+      "files": [
+        "03-implement/09-charge-axis-analysis/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "09-charge-axis-analysis",
+        "commit": "ad53eb6"
+      }
+    },
+    {
+      "at": "2026-10-21T17:38:22.454Z",
+      "event": "changelog_written",
+      "phase": "finish-pending",
+      "detail": {
+        "bump": "minor"
+      }
+    },
+    {
+      "at": "2026-10-21T17:38:34.076Z",
+      "event": "pr_opened",
+      "phase": "finish-pending",
+      "detail": {
+        "url": "https://github.com/rtonneau/moulinette/pull/2"
+      }
+    },
+    {
+      "at": "2026-10-21T17:38:34.079Z",
+      "event": "session_finished",
+      "phase": "finished",
+      "files": [
+        "INDEX.md"
+      ]
+    }
+  ],
+  "current_phase": "finished",
+  "git": {
+    "branch": "feat/home-screen-cross-format-analysis",
+    "base_branch": "main",
+    "branch_created_at": "2026-10-21T10:33:48.169Z",
+    "pr_url": "https://github.com/rtonneau/moulinette/pull/2"
+  },
+  "ship_mode": "subagent+inline",
+  "changelog": {
+    "bump": "minor",
+    "floor": "minor",
+    "reason": null,
+    "bullets": 5,
+    "path": ".work/changelog/2026-10-21__clean-review-current-state-of-the-gui-layout-need-a-home-screen.md",
+    "written_at": "2026-10-21T17:38:22.414Z"
+  },
+  "finished_at": "2026-10-21T17:38:34.079Z"
+}

@@ -2,9 +2,10 @@
 //! list-mode (`.lst`) panel's validation and analysis orchestration over
 //! `lst`, `rate` and `plot`.
 use crate::{
-    conversion::{Format, Selection},
+    chart,
+    conversion::{self, Format, Selection},
     lst::{self, ListFile},
-    mpa::{MpaFile, SectionKind},
+    mpa::{MpaFile, Record, SectionKind, Spectrum},
     plot,
     rate::{self, RateBin, Roi},
     workflow,
@@ -36,7 +37,63 @@ pub fn is_list_mode(path: &Path) -> bool {
         .is_some_and(|ext| ext.eq_ignore_ascii_case("lst"))
 }
 
-pub const MODES: [(Format, &str, &str); 8] = [
+/// Build one channel-count spectrum per `AdcHeader`, counting each event's
+/// channel value (clamped to `[0, n_channels)`) into its ADC's histogram.
+/// Events with no value for a given ADC are excluded, not counted as
+/// channel 0. The result is accepted directly by `conversion::convert`'s
+/// `Spectrum` parameter.
+pub fn histogram_list_file(file: &ListFile) -> Vec<Spectrum> {
+    file.adc_headers
+        .iter()
+        .map(|header| {
+            let n = header.n_channels as usize;
+            let mut counts = vec![0u64; n];
+            let bit = usize::from(header.adc_index.saturating_sub(1));
+            if n > 0 {
+                for event in &file.events {
+                    if let Some(Some(value)) = event.adc_values.get(bit) {
+                        let channel = (*value as usize).min(n - 1);
+                        counts[channel] += 1;
+                    }
+                }
+            }
+            let channels = counts
+                .into_iter()
+                .enumerate()
+                .map(|(line, count)| Record {
+                    line,
+                    bytes: count.to_string().into_bytes(),
+                })
+                .collect();
+            let mut metadata = Vec::new();
+            if let Some(v) = header.caloff {
+                metadata.push(Record {
+                    line: 0,
+                    bytes: format!("CALOFF={v}").into_bytes(),
+                });
+            }
+            if let Some(v) = header.calfact {
+                metadata.push(Record {
+                    line: 0,
+                    bytes: format!("CALFACT={v}").into_bytes(),
+                });
+            }
+            Spectrum {
+                header: Record {
+                    line: 0,
+                    bytes: format!("[DATA0,{n}]").into_bytes(),
+                },
+                data_identifier: b"0".to_vec(),
+                adc_index: header.adc_index as usize,
+                declared_channels: n,
+                metadata,
+                channels,
+            }
+        })
+        .collect()
+}
+
+pub const MODES: [(Format, &str, &str); 9] = [
     (
         Format::Xy,
         "XY · Channel / counts",
@@ -76,6 +133,11 @@ pub const MODES: [(Format, &str, &str); 8] = [
         Format::EightColumn,
         "8CO · Eight-column counts",
         "Eight fixed-width fields per row. Selection must contain a multiple of eight channels.",
+    ),
+    (
+        Format::ChargeNormalized,
+        "Charge-normalized (µC)",
+        "Divides each channel by a chosen monitor ADC/spectrum's total counts; optionally scaled to counts-per-µC. A moulinette-specific approximation (ADR 0002), not legacy-tool behavior.",
     ),
 ];
 
@@ -182,6 +244,9 @@ pub fn warnings(format: Format) -> &'static str {
         }
         Format::EightColumn => {
             "8CO count fields are limited to 10 bytes; longer count text is truncated."
+        }
+        Format::ChargeNormalized => {
+            "Monitor-ADC counts stand in for integrated beam charge (ADR 0002); this is a moulinette-specific approximation, not legacy-tool behavior. Leave counts-per-µC blank for a dimensionless ratio."
         }
         _ => {
             "Count text is limited to the legacy first 20 bytes. Output uses legacy filenames and CRLF line endings."
@@ -314,15 +379,11 @@ fn time_window((start, end): (&str, &str), row: usize) -> Result<TimeWindow, Str
     Ok(TimeWindow { start_s, end_s })
 }
 
-/// Validate the list-mode panel's inputs: ROI rows, time-bin width in
-/// milliseconds, optional time windows (start/end seconds) and output
-/// directory. The directory may not exist yet; it is created on run.
-pub fn list_mode_parameters(
-    rois: &[RoiFields],
-    bin_width_ms: &str,
-    windows: &[(&str, &str)],
-    output_dir: &str,
-) -> Result<ListParameters, String> {
+/// Validate a set of ROI rows shared by both the `.lst` list-mode panel and
+/// the `.mpa` Analyze-screen ROI editor: each row must parse (`roi`), and
+/// names must be unique (case-insensitive, since names become filenames on
+/// Windows).
+fn validated_rois(rois: &[RoiFields]) -> Result<Vec<RoiSpec>, String> {
     if rois.is_empty() {
         return Err("Add at least one ROI".into());
     }
@@ -332,7 +393,6 @@ pub fn list_mode_parameters(
         .map(|(i, fields)| roi(fields, i + 1))
         .collect::<Result<Vec<_>, _>>()?;
     for (i, spec) in rois.iter().enumerate() {
-        // Case-insensitive: Windows filenames are, and names become filenames.
         if rois[..i]
             .iter()
             .any(|other| other.name.eq_ignore_ascii_case(&spec.name))
@@ -344,6 +404,26 @@ pub fn list_mode_parameters(
             ));
         }
     }
+    Ok(rois)
+}
+
+/// Validate the `.mpa` Analyze-screen ROI editor's rows: the same ROI rows
+/// as the list-mode panel, but with no time-bin width, time windows or
+/// output directory, since this path writes no files.
+pub fn mpa_roi_parameters(rois: &[RoiFields]) -> Result<Vec<RoiSpec>, String> {
+    validated_rois(rois)
+}
+
+/// Validate the list-mode panel's inputs: ROI rows, time-bin width in
+/// milliseconds, optional time windows (start/end seconds) and output
+/// directory. The directory may not exist yet; it is created on run.
+pub fn list_mode_parameters(
+    rois: &[RoiFields],
+    bin_width_ms: &str,
+    windows: &[(&str, &str)],
+    output_dir: &str,
+) -> Result<ListParameters, String> {
+    let rois = validated_rois(rois)?;
     let dt_ms = bin_width_ms
         .trim()
         .parse::<u64>()
@@ -443,10 +523,21 @@ pub fn list_inspection(file: &ListFile) -> String {
 }
 
 /// Run the list-mode analysis on a parsed file: resolve each ROI, compute
-/// its time-binned rate, then write the rate CSVs, the rate-vs-time PNG and
-/// (with time windows) one violin PNG per ROI. Every destination is checked
-/// before anything is written, and each writer also refuses existing files.
+/// its time-binned rate (`rate_series`), then write the rate CSVs, the
+/// rate-vs-time PNG and (with time windows) one violin PNG per ROI
+/// (`list_mode_write`). Every destination is checked before anything is
+/// written, and each writer also refuses existing files.
 pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<PathBuf>, String> {
+    list_mode_write(&rate_series(file, params)?, params)
+}
+
+/// Resolve each of `params.rois` against `file` and compute its time-binned
+/// rate: one named series per ROI, in ROI order. This is the data behind
+/// both `list_mode_write`'s files and the in-window rate-vs-time chart.
+pub fn rate_series(
+    file: &ListFile,
+    params: &ListParameters,
+) -> Result<Vec<(String, Vec<RateBin>)>, String> {
     let mut series: Vec<(String, Vec<RateBin>)> = Vec::new();
     for spec in &params.rois {
         let roi = match spec.unit {
@@ -475,7 +566,18 @@ pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<Pat
             rate::time_binned_rate(&file.events, spec.adc, Some(&roi), 0, None, params.dt_ms);
         series.push((spec.name.clone(), bins));
     }
+    Ok(series)
+}
 
+/// Write a list-mode run's files (`list_mode_outputs`) from `series`, as
+/// computed by `rate_series` for the same `params`: the rate CSVs, the
+/// rate-vs-time PNG and (with time windows) one violin PNG per ROI. Every
+/// destination is checked before anything is written, and each writer also
+/// refuses existing files.
+pub fn list_mode_write(
+    series: &[(String, Vec<RateBin>)],
+    params: &ListParameters,
+) -> Result<Vec<PathBuf>, String> {
     let paths = list_mode_outputs(params);
     for (i, path) in paths.iter().enumerate() {
         if paths[..i].contains(path) {
@@ -497,17 +599,17 @@ pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<Pat
     let partial = |e: String| format!("{e}. Earlier files in this run may have been written.");
     let mut generated = Vec::new();
     let mut paths = paths.into_iter();
-    for (_, bins) in &series {
+    for (_, bins) in series {
         let path = paths.next().expect("one CSV per ROI");
         plot::write_rate_csv(bins, &path)
             .map_err(|e| partial(format!("cannot write {}: {e}", path.display())))?;
         generated.push(path);
     }
     let path = paths.next().expect("rate-vs-time PNG");
-    plot::rate_vs_time(&series, &path).map_err(|e| partial(e.to_string()))?;
+    plot::rate_vs_time(series, &path).map_err(|e| partial(e.to_string()))?;
     generated.push(path);
     if !params.windows.is_empty() {
-        for (_, bins) in &series {
+        for (_, bins) in series {
             let path = paths.next().expect("one violin PNG per ROI");
             let groups: Vec<(String, Vec<f64>)> = params
                 .windows
@@ -526,6 +628,429 @@ pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<Pat
         }
     }
     Ok(generated)
+}
+
+/// Build one labeled rate-value group per ROI/time-window pair from
+/// `series` (as computed by `rate_series`) and `windows`: the data behind
+/// the in-window violin chart (`chart::LineChart::violin`, Ticket 7).
+/// Named `"{roi} {start}-{end}s"` so every ROI's windows are
+/// distinguishable in one shared chart, the way `rate_series`' ROI names
+/// distinguish `chart::LineChart::rate_vs_time`'s series. This filters
+/// each ROI's bins the same way `list_mode_write` does for its per-ROI
+/// violin PNGs, but is otherwise independent of it: `list_mode_write`'s
+/// own grouping (and the PNGs it writes via `plot::violin`) is untouched,
+/// so their byte output does not depend on this function existing.
+pub fn violin_series(
+    series: &[(String, Vec<RateBin>)],
+    windows: &[TimeWindow],
+) -> Vec<(String, Vec<f64>)> {
+    series
+        .iter()
+        .flat_map(|(name, bins)| {
+            windows.iter().map(move |w| {
+                let values: Vec<f64> = bins
+                    .iter()
+                    .filter(|b| b.time_s >= w.start_s && b.time_s < w.end_s)
+                    .map(|b| b.rate)
+                    .collect();
+                (format!("{name} {}-{}s", w.start_s, w.end_s), values)
+            })
+        })
+        .collect()
+}
+
+/// One ROI's peak statistics over an `.mpa` spectrum: moment statistics
+/// (weighted mean/standard-deviation) and a linear background between the
+/// ROI's two edge channels, per the approved grill design (no Gaussian/peak
+/// fit).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RoiStatistics {
+    pub name: String,
+    /// Raw sum of counts over the ROI's inclusive channel range.
+    pub gross: f64,
+    /// `gross` minus the linear background drawn between the ROI's edge
+    /// channels, clamped to zero.
+    pub net: f64,
+    /// Weighted-mean channel, weighted by the background-subtracted count
+    /// of each channel (itself clamped to zero).
+    pub centroid: f64,
+    /// Standard-deviation width of that same weighted distribution.
+    pub width: f64,
+}
+
+/// Parse one channel's count text as a finite number. Mirrors
+/// `conversion::count_text`'s tolerance for the underlying bytes, but needs
+/// the numeric value rather than a byte slice to pass through unchanged.
+fn channel_count(record: &Record, index: usize) -> Result<f64, String> {
+    std::str::from_utf8(&record.bytes)
+        .ok()
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .and_then(|t| t.parse::<f64>().ok())
+        .filter(|v| v.is_finite())
+        .ok_or_else(|| {
+            format!(
+                "channel {index}: invalid count text {:?}",
+                String::from_utf8_lossy(&record.bytes)
+            )
+        })
+}
+
+/// Resolve one ROI's inclusive `[start, end]` channel bounds against
+/// `spectrum`. Channel-unit ROIs are used directly; energy-unit ROIs are
+/// resolved through the spectrum's CALOFF/CALFACT metadata the same way
+/// `list_mode_run` resolves `.lst` energy ROIs through `Roi::from_energy`,
+/// but inverting `conversion::energy_counts`'s one-based `E = i * slope +
+/// offset` formula (the `.mpa` EY writer's confirmed calibration), since
+/// `.mpa` calibration lives in text metadata rather than `lst::AdcHeader`'s
+/// numeric fields.
+fn roi_channel_bounds(spectrum: &Spectrum, spec: &RoiSpec) -> Result<(usize, usize), String> {
+    let n = spectrum.channels.len();
+    let (low, high) = match spec.unit {
+        RoiUnit::Channel => (spec.low, spec.high),
+        RoiUnit::Kev => {
+            let slope = f64::from(
+                conversion::coefficient(spectrum, "CALFACT")
+                    .map_err(|e| format!("ROI {}: {e}", spec.name))?,
+            );
+            let offset = f64::from(
+                conversion::coefficient(spectrum, "CALOFF")
+                    .map_err(|e| format!("ROI {}: {e}", spec.name))?,
+            );
+            if slope == 0.0 {
+                return Err(format!(
+                    "ROI {}: zero CALFACT slope cannot resolve energy bounds",
+                    spec.name
+                ));
+            }
+            // E = i * slope + offset, i one-based => i = (E - offset) /
+            // slope; the zero-based channel index is i - 1.
+            let low = (spec.low - offset) / slope - 1.0;
+            let high = (spec.high - offset) / slope - 1.0;
+            (low, high)
+        }
+    };
+    let (low, high) = if low <= high {
+        (low, high)
+    } else {
+        (high, low)
+    };
+    if !low.is_finite() || !high.is_finite() {
+        return Err(format!(
+            "ROI {}: resolved channel bounds are not finite",
+            spec.name
+        ));
+    }
+    let start = low.round();
+    let end = high.round();
+    if start < 0.0 || end < 0.0 || start as usize >= n || end as usize >= n {
+        return Err(format!(
+            "ROI {}: resolved channel range is out of bounds for {n} channels",
+            spec.name
+        ));
+    }
+    Ok((start as usize, end as usize))
+}
+
+/// Compute gross/net counts, weighted-mean centroid and standard-deviation
+/// width for each of `rois` over `spectrum`.
+///
+/// Net counts subtract a linear background drawn between the ROI's two edge
+/// channels (a trapezoid of `n` channels between the first and last
+/// channel's counts), clamped at zero so a noisy/narrow ROI whose edges are
+/// higher than its interior never reports negative net counts. Centroid and
+/// width are the weighted mean/standard-deviation of channel index, weighted
+/// by each channel's background-subtracted count (also clamped at zero per
+/// channel, so channels below the local background line do not pull the
+/// moments negative).
+pub fn roi_statistics(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<Vec<RoiStatistics>, String> {
+    rois.iter()
+        .map(|spec| {
+            let (start, end) = roi_channel_bounds(spectrum, spec)?;
+            let counts: Vec<f64> = (start..=end)
+                .map(|i| channel_count(&spectrum.channels[i], i))
+                .collect::<Result<_, _>>()
+                .map_err(|e: String| format!("ROI {}: {e}", spec.name))?;
+            let n = counts.len();
+            let gross: f64 = counts.iter().sum();
+            let edge_low = counts[0];
+            let edge_high = counts[n - 1];
+            let background = if n > 1 {
+                n as f64 * (edge_low + edge_high) / 2.0
+            } else {
+                edge_low
+            };
+            let net = (gross - background).max(0.0);
+
+            let weights: Vec<f64> = counts
+                .iter()
+                .enumerate()
+                .map(|(i, &c)| {
+                    let bg = if n > 1 {
+                        edge_low + (edge_high - edge_low) * (i as f64) / ((n - 1) as f64)
+                    } else {
+                        edge_low
+                    };
+                    (c - bg).max(0.0)
+                })
+                .collect();
+            let total_weight: f64 = weights.iter().sum();
+            let (centroid, width) = if total_weight > 0.0 {
+                let centroid = weights
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &w)| (start + i) as f64 * w)
+                    .sum::<f64>()
+                    / total_weight;
+                let variance = weights
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &w)| w * ((start + i) as f64 - centroid).powi(2))
+                    .sum::<f64>()
+                    / total_weight;
+                (centroid, variance.sqrt())
+            } else {
+                ((start as f64 + end as f64) / 2.0, 0.0)
+            };
+
+            Ok(RoiStatistics {
+                name: spec.name.clone(),
+                gross,
+                net,
+                centroid,
+                width,
+            })
+        })
+        .collect()
+}
+
+/// Result of the `.mpa` Analyze-screen ROI run: per-ROI statistics (Ticket
+/// 4) and an in-window spectrum chart (Ticket 6's `chart::LineChart`,
+/// Ticket 7) with each ROI's channel range shaded.
+pub struct MpaAnalysis {
+    pub stats: Vec<RoiStatistics>,
+    pub chart: chart::LineChart,
+}
+
+/// Run the `.mpa` Analyze-screen ROI analysis: resolve `rois` against the
+/// spectrum selected by `selected_spectrum` (the "Spectra to convert"
+/// combo's convention: `0` means "All spectra", resolved here to the first
+/// spectrum since statistics need exactly one; `n` means `spectra[n - 1]`),
+/// then compute statistics and build the in-window spectrum chart.
+pub fn mpa_analyze(
+    file: &MpaFile,
+    selected_spectrum: i32,
+    rois: &[RoiSpec],
+) -> Result<MpaAnalysis, String> {
+    let index = if selected_spectrum > 0 {
+        (selected_spectrum - 1) as usize
+    } else {
+        0
+    };
+    let spectrum = file
+        .spectra
+        .get(index)
+        .ok_or_else(|| "No spectra loaded".to_string())?;
+    let stats = roi_statistics(spectrum, rois)?;
+    let chart = spectrum_chart(spectrum, rois)?;
+    Ok(MpaAnalysis { stats, chart })
+}
+
+/// Format `stats` as the plain-text results table shown in the shared
+/// Results panel (`TextEdit`), one line per ROI.
+pub fn format_roi_statistics(stats: &[RoiStatistics]) -> String {
+    if stats.is_empty() {
+        return "No ROIs configured.".into();
+    }
+    stats
+        .iter()
+        .map(|s| {
+            format!(
+                "{}: gross {:.1} · net {:.1} · centroid {:.2} · width {:.2}",
+                s.name, s.gross, s.net, s.centroid, s.width
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Build the in-window spectrum-with-ROI-bands chart (Ticket 6's
+/// `chart::LineChart`) for `spectrum`: a single "Counts" series over its
+/// channel counts, plus one shaded `chart::Band` per resolvable ROI
+/// (colored by that ROI's position, like the previous static chart's
+/// `Palette99::pick(i)`). An ROI whose bounds cannot be resolved against
+/// this spectrum (e.g. missing calibration) is skipped rather than failing
+/// the whole chart, since `roi_statistics` already reports that error.
+fn spectrum_chart(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<chart::LineChart, String> {
+    let counts: Vec<f64> = (0..spectrum.channels.len())
+        .map(|i| channel_count(&spectrum.channels[i], i))
+        .collect::<Result<_, _>>()?;
+    let bands = rois
+        .iter()
+        .enumerate()
+        .filter_map(|(i, spec)| {
+            let (start, end) = roi_channel_bounds(spectrum, spec).ok()?;
+            Some(chart::Band {
+                x: chart::AxisRange {
+                    min: start as f64,
+                    max: (end + 1) as f64,
+                },
+                color_index: i,
+            })
+        })
+        .collect();
+    Ok(chart::LineChart::spectrum_with_bands(&counts, bands))
+}
+
+/// Charge-normalization calibration chosen on the Convert screen's "Charge
+/// normalization" section: the monitor ADC/spectrum whose own total counts
+/// over the run stand in for integrated beam charge (ADR 0002), and an
+/// optional counts-per-µC value scaling the dimensionless monitor-count
+/// ratio into counts-per-µC. `monitor_adc` is descriptive (the monitor
+/// spectrum's own `Spectrum::adc_index`); callers resolve the actual
+/// `Spectrum` to pass to `charge_normalized` themselves.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ChargeCalibration {
+    pub monitor_adc: u8,
+    pub counts_per_uc: Option<f64>,
+}
+
+/// Validate the Convert screen's optional "Counts per µC" text field.
+/// Blank means `counts_per_uc: None` (the output stays a dimensionless
+/// ratio against the monitor's raw counts); otherwise the text must parse
+/// as a finite, positive `f64`.
+pub fn charge_calibration(
+    monitor_adc: u8,
+    counts_per_uc: &str,
+) -> Result<ChargeCalibration, String> {
+    let text = counts_per_uc.trim();
+    let counts_per_uc = if text.is_empty() {
+        None
+    } else {
+        let value: f64 = text
+            .parse()
+            .map_err(|_| "Counts per µC must be a positive number, or blank".to_string())?;
+        if !(value.is_finite() && value > 0.0) {
+            return Err("Counts per µC must be a positive number, or blank".into());
+        }
+        Some(value)
+    };
+    Ok(ChargeCalibration {
+        monitor_adc,
+        counts_per_uc,
+    })
+}
+
+/// Write the charge-normalized format: each of `spectrum`'s selected
+/// channels divided by `monitor`'s total counts over the run (the whole
+/// spectrum, independent of `selection`), optionally scaled to
+/// counts-per-µC by `calibration.counts_per_uc` (ADR 0002). Returns
+/// `ConversionError::MonitorNoCounts` rather than dividing by zero when the
+/// monitor spectrum accumulated no counts.
+///
+/// This does not go through `conversion::convert`: `Format::ChargeNormalized`
+/// needs a second spectrum (the monitor) that `convert`'s one-spectrum
+/// signature has no room for, so the Convert screen calls this function
+/// directly instead of `workflow::render`'s per-spectrum `convert` loop.
+pub fn charge_normalized(
+    spectrum: &Spectrum,
+    selection: Selection,
+    monitor: &Spectrum,
+    calibration: ChargeCalibration,
+) -> Result<Vec<u8>, conversion::ConversionError> {
+    let monitor_total = monitor
+        .channels
+        .iter()
+        .enumerate()
+        .try_fold(0.0_f64, |sum, (i, record)| {
+            channel_count(record, i)
+                .map(|value| sum + value)
+                .map_err(conversion::ConversionError::InvalidCount)
+        })?;
+    if monitor_total == 0.0 {
+        return Err(conversion::ConversionError::MonitorNoCounts);
+    }
+    let (start, end) = conversion::bounds(spectrum, selection)?;
+    let mut out = Vec::new();
+    for index in start..=end {
+        let count = channel_count(&spectrum.channels[index], index)
+            .map_err(conversion::ConversionError::InvalidCount)?;
+        let mut value = count / monitor_total;
+        if let Some(counts_per_uc) = calibration.counts_per_uc {
+            value *= counts_per_uc;
+        }
+        out.extend_from_slice(format!("{index:>8}").as_bytes());
+        out.extend_from_slice(b"     ");
+        out.extend_from_slice(format!("{value:.6}").as_bytes());
+        out.extend_from_slice(b"\r\n");
+    }
+    Ok(out)
+}
+
+/// Pair each ROI's time-binned rate (`series`, as computed by
+/// `rate_series`) with `calibration.monitor_adc`'s own running cumulative
+/// count (or implied µC, when `calibration.counts_per_uc` is set),
+/// accumulated up to each bin's end time, for the in-window charge-axis
+/// chart (`chart::LineChart::rate_vs_charge`, Ticket 9).
+///
+/// `rate::time_binned_rate`'s own doc comment establishes the key fact
+/// this relies on: for a shared `start_ms` (`0`) and `dt_ms`, with
+/// `end_ms: None`, the number of bins is resolved from the maximum
+/// `time_ms` over ALL events, not filtered by ADC — so calling it here for
+/// the monitor's whole spectrum (`roi: None`) with the same `dt_ms`
+/// `rate_series` used to build `series` always yields exactly as many bins
+/// as every ROI's own series, aligned bin-for-bin by index. No
+/// time-matching is needed: each ROI bin `i` simply pairs with the
+/// monitor's bin `i`.
+///
+/// Each bin's x-value is an inclusive running sum of the monitor's own
+/// bin counts `0..=i` ("the cumulative count up to that bin's end time"),
+/// mirroring `charge_normalized`'s None/Some(cpu) distinction: `None`
+/// leaves it a dimensionless running count, `Some(cpu)` divides the
+/// running count by `cpu` to read as running µC (ADR 0002).
+pub fn charge_axis_series(
+    file: &ListFile,
+    series: &[(String, Vec<RateBin>)],
+    dt_ms: u64,
+    calibration: ChargeCalibration,
+) -> Vec<(String, Vec<(f64, f64)>)> {
+    let monitor_bins =
+        rate::time_binned_rate(&file.events, calibration.monitor_adc, None, 0, None, dt_ms);
+    let mut cumulative = 0u64;
+    let x: Vec<f64> = monitor_bins
+        .iter()
+        .map(|bin| {
+            cumulative += bin.counts;
+            match calibration.counts_per_uc {
+                Some(cpu) => cumulative as f64 / cpu,
+                None => cumulative as f64,
+            }
+        })
+        .collect();
+    series
+        .iter()
+        .map(|(name, bins)| {
+            (
+                name.clone(),
+                bins.iter().zip(&x).map(|(bin, &x)| (x, bin.rate)).collect(),
+            )
+        })
+        .collect()
+}
+
+/// X-axis description for the charge-axis chart, naming the quantity
+/// `charge_axis_series` computed: a dimensionless running count of
+/// `calibration.monitor_adc`'s own counts when uncalibrated, or an implied
+/// running charge in µC when `calibration.counts_per_uc` is set (ADR
+/// 0002), matching `charge_normalized`'s same None/Some(cpu) distinction.
+pub fn charge_axis_label(calibration: ChargeCalibration) -> String {
+    match calibration.counts_per_uc {
+        Some(_) => "Charge [\u{b5}C]".to_string(),
+        None => format!(
+            "Monitor ADC{} cumulative counts",
+            calibration.monitor_adc
+        ),
+    }
 }
 
 #[cfg(test)]
@@ -833,6 +1358,46 @@ mod tests {
     }
 
     #[test]
+    fn violin_series_filters_each_roi_by_window_into_labeled_groups() {
+        let dir = temp_dir("violin-series");
+        let input = dir.join("fixture.lst");
+        fs::write(&input, synthetic_lst()).unwrap();
+        let file = load_list(&input).unwrap();
+        let params = list_mode_parameters(
+            &[
+                fields("peak", "1", "20", "35", 0),
+                fields("low", "1", "0", "15", 1),
+            ],
+            "1000",
+            &[("0", "1"), ("1", "2")],
+            dir.join("out").to_str().unwrap(),
+        )
+        .unwrap();
+        let series = rate_series(&file, &params).unwrap();
+        let groups = violin_series(&series, &params.windows);
+        assert_eq!(
+            groups
+                .iter()
+                .map(|(name, _)| name.clone())
+                .collect::<Vec<_>>(),
+            vec![
+                "peak 0-1s".to_string(),
+                "peak 1-2s".to_string(),
+                "low 0-1s".to_string(),
+                "low 1-2s".to_string(),
+            ]
+        );
+        // Matches the per-ROI rates `list_mode_run_writes_outputs_and_never_overwrites`
+        // pins via the written CSVs: peak's rate is 2 in [0,1) and 0 in
+        // [1,2); low's is 0 then 1.
+        assert_eq!(groups[0].1, vec![2.0]);
+        assert_eq!(groups[1].1, vec![0.0]);
+        assert_eq!(groups[2].1, vec![0.0]);
+        assert_eq!(groups[3].1, vec![1.0]);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
     fn load_list_reports_unreadable_and_malformed_files() {
         let dir = temp_dir("load");
         assert!(
@@ -844,5 +1409,340 @@ mod tests {
         fs::write(&bad, b"[ADC1]\r\nno marker").unwrap();
         assert!(load_list(&bad).unwrap_err().contains("LISTDATA"));
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn adc_header(adc_index: u8, n_channels: u32) -> lst::AdcHeader {
+        lst::AdcHeader {
+            adc_index,
+            caloff: None,
+            calfact: None,
+            calfact2: None,
+            calfact3: None,
+            n_channels,
+        }
+    }
+
+    fn event(adc0: Option<u16>) -> lst::Event {
+        let mut adc_values = [None; 8];
+        adc_values[0] = adc0;
+        lst::Event {
+            time_ms: 0,
+            adc_values,
+        }
+    }
+
+    #[test]
+    fn histogram_list_file_counts_known_events_and_excludes_missing_values() {
+        let file = ListFile {
+            adc_headers: vec![adc_header(1, 4)],
+            events: vec![
+                event(Some(0)),
+                event(Some(2)),
+                event(Some(2)),
+                event(None), // excluded, not counted as channel 0.
+                event(Some(0)),
+            ],
+        };
+        let spectra = histogram_list_file(&file);
+        assert_eq!(spectra.len(), 1);
+        let s = &spectra[0];
+        assert_eq!(s.adc_index, 1);
+        assert_eq!(s.declared_channels, 4);
+        assert_eq!(s.channels.len(), 4);
+        let counts: Vec<&[u8]> = s.channels.iter().map(|r| r.bytes.as_slice()).collect();
+        assert_eq!(counts, vec![b"2".as_slice(), b"0", b"2", b"0"]);
+    }
+
+    #[test]
+    fn histogram_list_file_includes_upper_boundary_channel() {
+        let file = ListFile {
+            adc_headers: vec![adc_header(1, 4)],
+            events: vec![event(Some(3))],
+        };
+        let spectra = histogram_list_file(&file);
+        let counts: Vec<&[u8]> = spectra[0]
+            .channels
+            .iter()
+            .map(|r| r.bytes.as_slice())
+            .collect();
+        assert_eq!(counts, vec![b"0".as_slice(), b"0", b"0", b"1"]);
+    }
+
+    #[test]
+    fn histogram_list_file_zero_events_is_all_zero_of_declared_length() {
+        let file = ListFile {
+            adc_headers: vec![adc_header(1, 6)],
+            events: vec![],
+        };
+        let spectra = histogram_list_file(&file);
+        assert_eq!(spectra[0].declared_channels, 6);
+        assert_eq!(spectra[0].channels.len(), 6);
+        assert!(
+            spectra[0]
+                .channels
+                .iter()
+                .all(|r| r.bytes.as_slice() == b"0")
+        );
+    }
+
+    fn mpa_spectrum(counts: &[f64], metadata: &[(&str, &str)]) -> Spectrum {
+        Spectrum {
+            header: Record {
+                line: 0,
+                bytes: format!("[DATA0,{}]", counts.len()).into_bytes(),
+            },
+            data_identifier: b"0".to_vec(),
+            adc_index: 1,
+            declared_channels: counts.len(),
+            metadata: metadata
+                .iter()
+                .map(|(k, v)| Record {
+                    line: 0,
+                    bytes: format!("{k}={v}").into_bytes(),
+                })
+                .collect(),
+            channels: counts
+                .iter()
+                .enumerate()
+                .map(|(line, c)| Record {
+                    line,
+                    bytes: c.to_string().into_bytes(),
+                })
+                .collect(),
+        }
+    }
+
+    fn channel_roi(name: &str, low: f64, high: f64) -> RoiSpec {
+        RoiSpec {
+            name: name.to_string(),
+            adc: 1,
+            low,
+            high,
+            unit: RoiUnit::Channel,
+        }
+    }
+
+    #[test]
+    fn roi_statistics_flat_background_net_approx_gross() {
+        // Edges at 0 on both sides of a peak: no background to subtract.
+        let spectrum = mpa_spectrum(&[0.0, 0.0, 0.0, 10.0, 20.0, 10.0, 0.0, 0.0, 0.0], &[]);
+        let stats = roi_statistics(&spectrum, &[channel_roi("peak", 2.0, 6.0)]).unwrap();
+        let s = &stats[0];
+        assert_eq!(s.gross, 40.0);
+        assert!((s.net - s.gross).abs() < 1e-9, "{s:?}");
+        assert!((s.centroid - 4.0).abs() < 1e-9, "{s:?}");
+        assert!(s.width > 0.0, "{s:?}");
+    }
+
+    #[test]
+    fn roi_statistics_sloped_background_matches_triangular_area() {
+        // Pure linear ramp across the ROI: the trapezoid background exactly
+        // matches the data, so net is ~0 and gross - net equals the known
+        // trapezoidal background area n*(c0+cN)/2.
+        let counts = [5.0, 8.0, 11.0, 14.0, 17.0, 20.0];
+        let spectrum = mpa_spectrum(&counts, &[]);
+        let stats = roi_statistics(&spectrum, &[channel_roi("ramp", 0.0, 5.0)]).unwrap();
+        let s = &stats[0];
+        let n = counts.len() as f64;
+        let expected_background = n * (counts[0] + counts[counts.len() - 1]) / 2.0;
+        assert_eq!(s.gross, counts.iter().sum::<f64>());
+        assert!(s.net.abs() < 1e-9, "{s:?}");
+        assert!(
+            (s.gross - s.net - expected_background).abs() < 1e-9,
+            "{s:?}"
+        );
+    }
+
+    #[test]
+    fn roi_statistics_narrow_noisy_roi_clamps_net_at_zero() {
+        // Edge channels far higher than the interior: naive subtraction
+        // would go deeply negative.
+        let spectrum = mpa_spectrum(&[100.0, 5.0, 3.0, 4.0, 100.0], &[]);
+        let stats = roi_statistics(&spectrum, &[channel_roi("noisy", 0.0, 4.0)]).unwrap();
+        let s = &stats[0];
+        assert_eq!(s.gross, 212.0);
+        assert_eq!(s.net, 0.0, "{s:?}");
+    }
+
+    #[test]
+    fn roi_statistics_resolves_energy_bounds_through_mpa_calibration() {
+        // E = (i+1)*slope + offset (one-based index i), so channel index 4
+        // (0-based) <-> energy 10 + 5*5 = 35 with slope=5, offset=10.
+        let spectrum = mpa_spectrum(
+            &[0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0, 0.0],
+            &[("CALOFF", "10"), ("CALFACT", "5")],
+        );
+        let roi = RoiSpec {
+            name: "peak".to_string(),
+            adc: 1,
+            low: 35.0,
+            high: 35.0,
+            unit: RoiUnit::Kev,
+        };
+        let stats = roi_statistics(&spectrum, &[roi]).unwrap();
+        let s = &stats[0];
+        assert_eq!(s.gross, 50.0);
+        assert_eq!(s.centroid, 4.0, "{s:?}");
+    }
+
+    #[test]
+    fn roi_statistics_reports_missing_calibration_and_out_of_range() {
+        let spectrum = mpa_spectrum(&[1.0, 2.0, 3.0], &[]);
+        let roi = RoiSpec {
+            name: "peak".to_string(),
+            adc: 1,
+            low: 10.0,
+            high: 20.0,
+            unit: RoiUnit::Kev,
+        };
+        let error = roi_statistics(&spectrum, &[roi]).unwrap_err();
+        assert!(
+            error.contains("peak") && error.contains("CALFACT"),
+            "{error}"
+        );
+
+        let out_of_range = channel_roi("peak", 0.0, 10.0);
+        let error = roi_statistics(&spectrum, &[out_of_range]).unwrap_err();
+        assert!(error.contains("out of bounds"), "{error}");
+    }
+
+    #[test]
+    fn charge_normalized_dimensionless_ratio_without_calibration() {
+        let spectrum = mpa_spectrum(&[10.0, 20.0, 30.0], &[]);
+        let monitor = mpa_spectrum(&[2.0, 2.0, 2.0], &[]);
+        let calibration = ChargeCalibration {
+            monitor_adc: monitor.adc_index as u8,
+            counts_per_uc: None,
+        };
+        let bytes = charge_normalized(&spectrum, Selection::default(), &monitor, calibration)
+            .unwrap();
+        let text = String::from_utf8(bytes).unwrap();
+        let monitor_total = 6.0; // 2.0 + 2.0 + 2.0
+        let expected: String = [10.0_f64, 20.0, 30.0]
+            .iter()
+            .enumerate()
+            .map(|(i, count)| format!("{i:>8}     {:.6}\r\n", count / monitor_total))
+            .collect();
+        assert_eq!(text, expected);
+    }
+
+    #[test]
+    fn charge_normalized_scales_to_counts_per_uc_when_calibrated() {
+        let spectrum = mpa_spectrum(&[10.0, 20.0, 30.0], &[]);
+        let monitor = mpa_spectrum(&[2.0, 2.0, 2.0], &[]);
+        let calibration = ChargeCalibration {
+            monitor_adc: monitor.adc_index as u8,
+            counts_per_uc: Some(2.0),
+        };
+        let bytes = charge_normalized(&spectrum, Selection::default(), &monitor, calibration)
+            .unwrap();
+        let text = String::from_utf8(bytes).unwrap();
+        let monitor_total = 6.0; // 2.0 + 2.0 + 2.0
+        let expected: String = [10.0_f64, 20.0, 30.0]
+            .iter()
+            .enumerate()
+            .map(|(i, count)| format!("{i:>8}     {:.6}\r\n", count / monitor_total * 2.0))
+            .collect();
+        assert_eq!(text, expected);
+        // Calibrated output must differ from the uncalibrated ratio, not
+        // just coincidentally match it.
+        assert!(!text.contains("1.666667"));
+    }
+
+    #[test]
+    fn charge_normalized_reports_structured_error_for_zero_count_monitor() {
+        let spectrum = mpa_spectrum(&[10.0, 20.0, 30.0], &[]);
+        let monitor = mpa_spectrum(&[0.0, 0.0, 0.0], &[]);
+        let calibration = ChargeCalibration {
+            monitor_adc: monitor.adc_index as u8,
+            counts_per_uc: None,
+        };
+        let error = charge_normalized(&spectrum, Selection::default(), &monitor, calibration)
+            .unwrap_err();
+        assert_eq!(error, conversion::ConversionError::MonitorNoCounts);
+        assert_eq!(error.to_string(), "monitor ADC recorded no counts");
+    }
+
+    #[test]
+    fn charge_axis_series_pairs_each_bin_with_the_monitors_cumulative_count() {
+        let dir = temp_dir("charge-axis");
+        let input = dir.join("fixture.lst");
+        fs::write(&input, synthetic_lst()).unwrap();
+        let file = load_list(&input).unwrap();
+        // Same fixture/ROI/dt_ms as `list_mode_run_writes_outputs_and_never_overwrites`:
+        // ADC1 events at channels 25 (t=0ms), 30 (t=100ms), 10 (t=1200ms)
+        // and 99 (t=1300ms), dt_ms=1000 => two bins, [0,1000) and
+        // [1000,2000), each holding two events.
+        let params = list_mode_parameters(
+            &[fields("peak", "1", "20", "35", 0)],
+            "1000",
+            &[],
+            dir.join("out").to_str().unwrap(),
+        )
+        .unwrap();
+        let series = rate_series(&file, &params).unwrap();
+
+        // Monitor = ADC1's whole spectrum (no ROI): the ticket's required
+        // assertion, computed independently of `charge_axis_series` via
+        // `rate::time_binned_rate` directly, is that each bin's x-value
+        // equals the monitor's own cumulative count up to that bin's end
+        // time (an inclusive running sum, not exclusive-of-self).
+        let calibration = ChargeCalibration {
+            monitor_adc: 1,
+            counts_per_uc: None,
+        };
+        let monitor_bins = rate::time_binned_rate(&file.events, 1, None, 0, None, params.dt_ms);
+        let mut expected_cumulative = 0u64;
+        let expected_x: Vec<f64> = monitor_bins
+            .iter()
+            .map(|b| {
+                expected_cumulative += b.counts;
+                expected_cumulative as f64
+            })
+            .collect();
+        assert_eq!(expected_x, vec![2.0, 4.0], "two events land in each bin");
+
+        let charge_series = charge_axis_series(&file, &series, params.dt_ms, calibration);
+        assert_eq!(charge_series.len(), 1);
+        let (name, points) = &charge_series[0];
+        assert_eq!(name, "peak");
+        assert_eq!(
+            points.iter().map(|&(x, _)| x).collect::<Vec<_>>(),
+            expected_x,
+            "each bin's x-value is the monitor's cumulative count up to that bin's end time"
+        );
+        // The y-values are unchanged from `series`' own rate-vs-time bins
+        // (2 counts/s in [0,1000), 0 in [1000,2000), matching the written
+        // peak.csv in `list_mode_run_writes_outputs_and_never_overwrites`).
+        assert_eq!(*points, vec![(2.0, 2.0), (4.0, 0.0)]);
+
+        // Calibrated: counts-per-µC divides the same cumulative counts,
+        // not the rates.
+        let calibrated = ChargeCalibration {
+            monitor_adc: 1,
+            counts_per_uc: Some(2.0),
+        };
+        let charge_series = charge_axis_series(&file, &series, params.dt_ms, calibrated);
+        assert_eq!(charge_series[0].1, vec![(1.0, 2.0), (2.0, 0.0)]);
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn charge_axis_label_distinguishes_calibrated_and_uncalibrated_axes() {
+        assert_eq!(
+            charge_axis_label(ChargeCalibration {
+                monitor_adc: 3,
+                counts_per_uc: None,
+            }),
+            "Monitor ADC3 cumulative counts"
+        );
+        assert_eq!(
+            charge_axis_label(ChargeCalibration {
+                monitor_adc: 3,
+                counts_per_uc: Some(1.5),
+            }),
+            "Charge [\u{b5}C]"
+        );
     }
 }
