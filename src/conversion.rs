@@ -192,7 +192,7 @@ pub fn xy(s: &Spectrum, selection: Selection) -> Result<Vec<u8>, ConversionError
     Ok(out)
 }
 
-fn coefficient(s: &Spectrum, key: &'static str) -> Result<f32, ConversionError> {
+pub(crate) fn coefficient(s: &Spectrum, key: &'static str) -> Result<f32, ConversionError> {
     let bytes = s
         .metadata_value(key)
         .ok_or(ConversionError::MissingMetadata {

@@ -2,7 +2,7 @@
 //! list-mode (`.lst`) panel's validation and analysis orchestration over
 //! `lst`, `rate` and `plot`.
 use crate::{
-    conversion::{Format, Selection},
+    conversion::{self, Format, Selection},
     lst::{self, ListFile},
     mpa::{MpaFile, Record, SectionKind, Spectrum},
     plot,
@@ -584,6 +584,171 @@ pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<Pat
     Ok(generated)
 }
 
+/// One ROI's peak statistics over an `.mpa` spectrum: moment statistics
+/// (weighted mean/standard-deviation) and a linear background between the
+/// ROI's two edge channels, per the approved grill design (no Gaussian/peak
+/// fit).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RoiStatistics {
+    pub name: String,
+    /// Raw sum of counts over the ROI's inclusive channel range.
+    pub gross: f64,
+    /// `gross` minus the linear background drawn between the ROI's edge
+    /// channels, clamped to zero.
+    pub net: f64,
+    /// Weighted-mean channel, weighted by the background-subtracted count
+    /// of each channel (itself clamped to zero).
+    pub centroid: f64,
+    /// Standard-deviation width of that same weighted distribution.
+    pub width: f64,
+}
+
+/// Parse one channel's count text as a finite number. Mirrors
+/// `conversion::count_text`'s tolerance for the underlying bytes, but needs
+/// the numeric value rather than a byte slice to pass through unchanged.
+fn channel_count(record: &Record, index: usize) -> Result<f64, String> {
+    std::str::from_utf8(&record.bytes)
+        .ok()
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .and_then(|t| t.parse::<f64>().ok())
+        .filter(|v| v.is_finite())
+        .ok_or_else(|| {
+            format!(
+                "channel {index}: invalid count text {:?}",
+                String::from_utf8_lossy(&record.bytes)
+            )
+        })
+}
+
+/// Resolve one ROI's inclusive `[start, end]` channel bounds against
+/// `spectrum`. Channel-unit ROIs are used directly; energy-unit ROIs are
+/// resolved through the spectrum's CALOFF/CALFACT metadata the same way
+/// `list_mode_run` resolves `.lst` energy ROIs through `Roi::from_energy`,
+/// but inverting `conversion::energy_counts`'s one-based `E = i * slope +
+/// offset` formula (the `.mpa` EY writer's confirmed calibration), since
+/// `.mpa` calibration lives in text metadata rather than `lst::AdcHeader`'s
+/// numeric fields.
+fn roi_channel_bounds(spectrum: &Spectrum, spec: &RoiSpec) -> Result<(usize, usize), String> {
+    let n = spectrum.channels.len();
+    let (low, high) = match spec.unit {
+        RoiUnit::Channel => (spec.low, spec.high),
+        RoiUnit::Kev => {
+            let slope = f64::from(
+                conversion::coefficient(spectrum, "CALFACT")
+                    .map_err(|e| format!("ROI {}: {e}", spec.name))?,
+            );
+            let offset = f64::from(
+                conversion::coefficient(spectrum, "CALOFF")
+                    .map_err(|e| format!("ROI {}: {e}", spec.name))?,
+            );
+            if slope == 0.0 {
+                return Err(format!(
+                    "ROI {}: zero CALFACT slope cannot resolve energy bounds",
+                    spec.name
+                ));
+            }
+            // E = i * slope + offset, i one-based => i = (E - offset) /
+            // slope; the zero-based channel index is i - 1.
+            let low = (spec.low - offset) / slope - 1.0;
+            let high = (spec.high - offset) / slope - 1.0;
+            (low, high)
+        }
+    };
+    let (low, high) = if low <= high {
+        (low, high)
+    } else {
+        (high, low)
+    };
+    if !low.is_finite() || !high.is_finite() {
+        return Err(format!(
+            "ROI {}: resolved channel bounds are not finite",
+            spec.name
+        ));
+    }
+    let start = low.round();
+    let end = high.round();
+    if start < 0.0 || end < 0.0 || start as usize >= n || end as usize >= n {
+        return Err(format!(
+            "ROI {}: resolved channel range is out of bounds for {n} channels",
+            spec.name
+        ));
+    }
+    Ok((start as usize, end as usize))
+}
+
+/// Compute gross/net counts, weighted-mean centroid and standard-deviation
+/// width for each of `rois` over `spectrum`.
+///
+/// Net counts subtract a linear background drawn between the ROI's two edge
+/// channels (a trapezoid of `n` channels between the first and last
+/// channel's counts), clamped at zero so a noisy/narrow ROI whose edges are
+/// higher than its interior never reports negative net counts. Centroid and
+/// width are the weighted mean/standard-deviation of channel index, weighted
+/// by each channel's background-subtracted count (also clamped at zero per
+/// channel, so channels below the local background line do not pull the
+/// moments negative).
+pub fn roi_statistics(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<Vec<RoiStatistics>, String> {
+    rois.iter()
+        .map(|spec| {
+            let (start, end) = roi_channel_bounds(spectrum, spec)?;
+            let counts: Vec<f64> = (start..=end)
+                .map(|i| channel_count(&spectrum.channels[i], i))
+                .collect::<Result<_, _>>()
+                .map_err(|e: String| format!("ROI {}: {e}", spec.name))?;
+            let n = counts.len();
+            let gross: f64 = counts.iter().sum();
+            let edge_low = counts[0];
+            let edge_high = counts[n - 1];
+            let background = if n > 1 {
+                n as f64 * (edge_low + edge_high) / 2.0
+            } else {
+                edge_low
+            };
+            let net = (gross - background).max(0.0);
+
+            let weights: Vec<f64> = counts
+                .iter()
+                .enumerate()
+                .map(|(i, &c)| {
+                    let bg = if n > 1 {
+                        edge_low + (edge_high - edge_low) * (i as f64) / ((n - 1) as f64)
+                    } else {
+                        edge_low
+                    };
+                    (c - bg).max(0.0)
+                })
+                .collect();
+            let total_weight: f64 = weights.iter().sum();
+            let (centroid, width) = if total_weight > 0.0 {
+                let centroid = weights
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &w)| (start + i) as f64 * w)
+                    .sum::<f64>()
+                    / total_weight;
+                let variance = weights
+                    .iter()
+                    .enumerate()
+                    .map(|(i, &w)| w * ((start + i) as f64 - centroid).powi(2))
+                    .sum::<f64>()
+                    / total_weight;
+                (centroid, variance.sqrt())
+            } else {
+                ((start as f64 + end as f64) / 2.0, 0.0)
+            };
+
+            Ok(RoiStatistics {
+                name: spec.name.clone(),
+                gross,
+                net,
+                centroid,
+                width,
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -974,5 +1139,126 @@ mod tests {
                 .iter()
                 .all(|r| r.bytes.as_slice() == b"0")
         );
+    }
+
+    fn mpa_spectrum(counts: &[f64], metadata: &[(&str, &str)]) -> Spectrum {
+        Spectrum {
+            header: Record {
+                line: 0,
+                bytes: format!("[DATA0,{}]", counts.len()).into_bytes(),
+            },
+            data_identifier: b"0".to_vec(),
+            adc_index: 1,
+            declared_channels: counts.len(),
+            metadata: metadata
+                .iter()
+                .map(|(k, v)| Record {
+                    line: 0,
+                    bytes: format!("{k}={v}").into_bytes(),
+                })
+                .collect(),
+            channels: counts
+                .iter()
+                .enumerate()
+                .map(|(line, c)| Record {
+                    line,
+                    bytes: c.to_string().into_bytes(),
+                })
+                .collect(),
+        }
+    }
+
+    fn channel_roi(name: &str, low: f64, high: f64) -> RoiSpec {
+        RoiSpec {
+            name: name.to_string(),
+            adc: 1,
+            low,
+            high,
+            unit: RoiUnit::Channel,
+        }
+    }
+
+    #[test]
+    fn roi_statistics_flat_background_net_approx_gross() {
+        // Edges at 0 on both sides of a peak: no background to subtract.
+        let spectrum = mpa_spectrum(&[0.0, 0.0, 0.0, 10.0, 20.0, 10.0, 0.0, 0.0, 0.0], &[]);
+        let stats = roi_statistics(&spectrum, &[channel_roi("peak", 2.0, 6.0)]).unwrap();
+        let s = &stats[0];
+        assert_eq!(s.gross, 40.0);
+        assert!((s.net - s.gross).abs() < 1e-9, "{s:?}");
+        assert!((s.centroid - 4.0).abs() < 1e-9, "{s:?}");
+        assert!(s.width > 0.0, "{s:?}");
+    }
+
+    #[test]
+    fn roi_statistics_sloped_background_matches_triangular_area() {
+        // Pure linear ramp across the ROI: the trapezoid background exactly
+        // matches the data, so net is ~0 and gross - net equals the known
+        // trapezoidal background area n*(c0+cN)/2.
+        let counts = [5.0, 8.0, 11.0, 14.0, 17.0, 20.0];
+        let spectrum = mpa_spectrum(&counts, &[]);
+        let stats = roi_statistics(&spectrum, &[channel_roi("ramp", 0.0, 5.0)]).unwrap();
+        let s = &stats[0];
+        let n = counts.len() as f64;
+        let expected_background = n * (counts[0] + counts[counts.len() - 1]) / 2.0;
+        assert_eq!(s.gross, counts.iter().sum::<f64>());
+        assert!(s.net.abs() < 1e-9, "{s:?}");
+        assert!(
+            (s.gross - s.net - expected_background).abs() < 1e-9,
+            "{s:?}"
+        );
+    }
+
+    #[test]
+    fn roi_statistics_narrow_noisy_roi_clamps_net_at_zero() {
+        // Edge channels far higher than the interior: naive subtraction
+        // would go deeply negative.
+        let spectrum = mpa_spectrum(&[100.0, 5.0, 3.0, 4.0, 100.0], &[]);
+        let stats = roi_statistics(&spectrum, &[channel_roi("noisy", 0.0, 4.0)]).unwrap();
+        let s = &stats[0];
+        assert_eq!(s.gross, 212.0);
+        assert_eq!(s.net, 0.0, "{s:?}");
+    }
+
+    #[test]
+    fn roi_statistics_resolves_energy_bounds_through_mpa_calibration() {
+        // E = (i+1)*slope + offset (one-based index i), so channel index 4
+        // (0-based) <-> energy 10 + 5*5 = 35 with slope=5, offset=10.
+        let spectrum = mpa_spectrum(
+            &[0.0, 0.0, 0.0, 0.0, 50.0, 0.0, 0.0, 0.0],
+            &[("CALOFF", "10"), ("CALFACT", "5")],
+        );
+        let roi = RoiSpec {
+            name: "peak".to_string(),
+            adc: 1,
+            low: 35.0,
+            high: 35.0,
+            unit: RoiUnit::Kev,
+        };
+        let stats = roi_statistics(&spectrum, &[roi]).unwrap();
+        let s = &stats[0];
+        assert_eq!(s.gross, 50.0);
+        assert_eq!(s.centroid, 4.0, "{s:?}");
+    }
+
+    #[test]
+    fn roi_statistics_reports_missing_calibration_and_out_of_range() {
+        let spectrum = mpa_spectrum(&[1.0, 2.0, 3.0], &[]);
+        let roi = RoiSpec {
+            name: "peak".to_string(),
+            adc: 1,
+            low: 10.0,
+            high: 20.0,
+            unit: RoiUnit::Kev,
+        };
+        let error = roi_statistics(&spectrum, &[roi]).unwrap_err();
+        assert!(
+            error.contains("peak") && error.contains("CALFACT"),
+            "{error}"
+        );
+
+        let out_of_range = channel_roi("peak", 0.0, 10.0);
+        let error = roi_statistics(&spectrum, &[out_of_range]).unwrap_err();
+        assert!(error.contains("out of bounds"), "{error}");
     }
 }
