@@ -115,6 +115,30 @@
         "ticket": "02-lst-histogram-spectrum",
         "commit": "0f03895"
       }
+    },
+    {
+      "at": "2026-10-21T10:54:37.561Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/03-wire-lst-convert.md",
+        "03-implement/03-wire-lst-convert/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-wire-lst-convert"
+      }
+    },
+    {
+      "at": "2026-10-21T10:58:58.344Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/03-wire-lst-convert/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "03-wire-lst-convert",
+        "commit": "ebd058f"
+      }
     }
   ],
   "current_phase": "ship",
