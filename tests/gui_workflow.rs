@@ -20,7 +20,8 @@ fn le(words: &[u16]) -> Vec<u8> {
 /// used by `gui_state`'s and the `list` CLI's own fixtures.
 fn synthetic_lst() -> Vec<u8> {
     let mut bytes =
-        b"[ADC1]\r\ncaloff=0\r\ncalfact=1\r\ntimerreduce=100\r\nnchannels=4096\r\n[LISTDATA]".to_vec();
+        b"[ADC1]\r\ncaloff=0\r\ncalfact=1\r\ntimerreduce=100\r\nnchannels=4096\r\n[LISTDATA]"
+            .to_vec();
     bytes.extend(le(&[0x0001, 0x0000, 0x0019]));
     bytes.extend(le(&[0x0000, 0x4000]));
     bytes.extend(le(&[0x0001, 0x0000, 0x001E]));
@@ -229,6 +230,42 @@ fn overwrite_preflight_and_race_protection() {
     fs::remove_file(&input).unwrap();
     assert!(workflow::load(&input).unwrap_err().contains("cannot read"));
     fs::remove_dir(dir).unwrap();
+}
+
+/// Ticket 5: the `.mpa` Analyze-screen ROI run (`gui_state::mpa_analyze`)
+/// reports the same statistics `roi_statistics` (Ticket 4) computes
+/// directly, and renders a correctly sized static chart buffer.
+#[test]
+fn mpa_analyze_matches_roi_statistics_and_renders_a_correctly_sized_chart() {
+    let file =
+        mpa::parse(b"[ADC1]\ncaloff=0\ncalfact=1\n[DATA0,9]\n0\n0\n0\n10\n20\n10\n0\n0\n0\n")
+            .unwrap();
+    let rois = [gui_state::RoiSpec {
+        name: "peak".into(),
+        adc: 1,
+        low: 3.0,
+        high: 7.0,
+        unit: gui_state::RoiUnit::Kev,
+    }];
+
+    let expected = gui_state::roi_statistics(&file.spectra[0], &rois).unwrap();
+    let analysis = gui_state::mpa_analyze(&file, 0, &rois).unwrap();
+    assert_eq!(analysis.stats, expected);
+    assert_eq!(
+        gui_state::format_roi_statistics(&analysis.stats),
+        gui_state::format_roi_statistics(&expected)
+    );
+
+    // `selected_spectrum` follows the "Spectra to convert" combo's
+    // convention: 0 means "All spectra", resolved to the first spectrum.
+    let analysis_selected = gui_state::mpa_analyze(&file, 1, &rois).unwrap();
+    assert_eq!(analysis_selected.stats, expected);
+
+    assert_eq!(analysis.chart.width, 900);
+    assert_eq!(analysis.chart.height, 500);
+    assert_eq!(analysis.chart.rgb.len(), 900 * 500 * 3);
+
+    assert!(gui_state::mpa_analyze(&file, 5, &rois).is_err());
 }
 
 #[test]

@@ -57,21 +57,26 @@ fn blank_roi() -> RoiRow {
     }
 }
 
+/// Convert the shared ROI rows model into `gui_state::RoiFields`, shared by
+/// the `.lst` list-mode panel and the `.mpa` Analyze-screen ROI editor.
+fn roi_fields(rois: &[RoiRow]) -> Vec<gui_state::RoiFields<'_>> {
+    rois.iter()
+        .map(|r| gui_state::RoiFields {
+            name: r.name.as_str(),
+            adc: r.adc.as_str(),
+            low: r.low.as_str(),
+            high: r.high.as_str(),
+            unit: r.unit,
+        })
+        .collect()
+}
+
 /// Validate the list-mode panel's current rows and fields.
 fn list_parameters(ui: &MainWindow) -> Result<gui_state::ListParameters, String> {
     let rois: Vec<RoiRow> = ui.get_rois().iter().collect();
     let windows: Vec<TimeWindowRow> = ui.get_time_windows().iter().collect();
     gui_state::list_mode_parameters(
-        &rois
-            .iter()
-            .map(|r| gui_state::RoiFields {
-                name: r.name.as_str(),
-                adc: r.adc.as_str(),
-                low: r.low.as_str(),
-                high: r.high.as_str(),
-                unit: r.unit,
-            })
-            .collect::<Vec<_>>(),
+        &roi_fields(&rois),
         ui.get_bin_width().as_str(),
         &windows
             .iter()
@@ -79,6 +84,13 @@ fn list_parameters(ui: &MainWindow) -> Result<gui_state::ListParameters, String>
             .collect::<Vec<_>>(),
         ui.get_output_path().as_str(),
     )
+}
+
+/// Validate the `.mpa` Analyze-screen ROI editor's current rows (the same
+/// rows model as the list-mode panel, without time windows/bin width).
+fn mpa_roi_parameters(ui: &MainWindow) -> Result<Vec<gui_state::RoiSpec>, String> {
+    let rois: Vec<RoiRow> = ui.get_rois().iter().collect();
+    gui_state::mpa_roi_parameters(&roi_fields(&rois))
 }
 
 fn joined(paths: &[PathBuf]) -> String {
@@ -363,11 +375,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         ui.set_loaded(true);
                         ui.set_has_results(false);
                         ui.set_warnings("".into());
-                        // Loading an `.mpa` file on the Analyze screen is still
-                        // unsupported; loading an `.lst` file on the Convert
-                        // screen is handled below via the Ticket 2 histogram.
+                        // Loading an `.lst` file on the Convert screen is
+                        // handled below via the Ticket 2 histogram; every
+                        // other screen/extension combination is supported.
                         let screen = ui.get_screen();
-                        let mismatched = screen == SCREEN_ANALYZE && !list_mode;
                         let mut state = shared.borrow_mut();
                         state.input = path;
                         state.result_directory = None;
@@ -387,7 +398,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     ),
                                 ));
                                 ui.set_spectrum(0);
-                                ui.set_results("No conversion yet.".into());
+                                ui.set_results(
+                                    if screen == SCREEN_ANALYZE {
+                                        "No analysis yet."
+                                    } else {
+                                        "No conversion yet."
+                                    }
+                                    .into(),
+                                );
                                 state.file = Some(Arc::new(file));
                                 format!("Measurement ready · {count} spectra.")
                             }
@@ -425,11 +443,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         };
                         refresh(&ui, &state);
-                        if mismatched {
-                            report(&ui, Ok("Not supported yet".into()));
-                        } else {
-                            report(&ui, Ok(message));
-                        }
+                        report(&ui, Ok(message));
                     }
                     Err(e) => report(&ui, Err(e)),
                 }
@@ -624,81 +638,154 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if ui.get_busy() {
             return;
         }
-        let Some(file) = shared.borrow().list.clone() else {
-            report(&ui, Err("Open a list-mode file first".into()));
-            return;
-        };
-        let params = match list_parameters(&ui) {
-            Ok(p) => p,
-            Err(e) => {
-                report(&ui, Err(e));
-                return;
-            }
-        };
-        ui.set_busy(true);
-        ui.set_error(false);
-        ui.set_status("Computing rates and rendering plots…".into());
-        ui.set_has_results(false);
-        ui.set_results("Analysis in progress…".into());
-        ui.set_warnings(gui_state::LIST_MODE_WARNINGS.into());
-        let weak = ui.as_weak();
-        let shared = shared.clone();
-        let (sender, receiver) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let result = gui_state::list_mode_run(&file, &params);
-            let _ = sender.send((params.output_dir, result));
-        });
-        let timer = timer_analyze.clone();
-        let timer_callback = Rc::downgrade(&timer);
-        timer.start(
-            slint::TimerMode::Repeated,
-            std::time::Duration::from_millis(50),
-            move || {
-                let (dir, result) = match receiver.try_recv() {
-                    Ok(value) => value,
-                    Err(std::sync::mpsc::TryRecvError::Empty) => return,
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                        if let Some(timer) = timer_callback.upgrade() {
-                            timer.stop();
+        let list_file = shared.borrow().list.clone();
+        if let Some(file) = list_file {
+            let params = match list_parameters(&ui) {
+                Ok(p) => p,
+                Err(e) => {
+                    report(&ui, Err(e));
+                    return;
+                }
+            };
+            ui.set_busy(true);
+            ui.set_error(false);
+            ui.set_status("Computing rates and rendering plots…".into());
+            ui.set_has_results(false);
+            ui.set_results("Analysis in progress…".into());
+            ui.set_warnings(gui_state::LIST_MODE_WARNINGS.into());
+            let weak = ui.as_weak();
+            let shared = shared.clone();
+            let (sender, receiver) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let result = gui_state::list_mode_run(&file, &params);
+                let _ = sender.send((params.output_dir, result));
+            });
+            let timer = timer_analyze.clone();
+            let timer_callback = Rc::downgrade(&timer);
+            timer.start(
+                slint::TimerMode::Repeated,
+                std::time::Duration::from_millis(50),
+                move || {
+                    let (dir, result) = match receiver.try_recv() {
+                        Ok(value) => value,
+                        Err(std::sync::mpsc::TryRecvError::Empty) => return,
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            if let Some(timer) = timer_callback.upgrade() {
+                                timer.stop();
+                            }
+                            if let Some(ui) = weak.upgrade() {
+                                report(
+                                    &ui,
+                                    Err(
+                                        "Analysis worker stopped unexpectedly. Partial files may remain."
+                                            .into(),
+                                    ),
+                                );
+                            }
+                            return;
                         }
-                        if let Some(ui) = weak.upgrade() {
+                    };
+                    if let Some(timer) = timer_callback.upgrade() {
+                        timer.stop();
+                    }
+                    let Some(ui) = weak.upgrade() else {
+                        return;
+                    };
+                    match result {
+                        Ok(paths) => {
+                            ui.set_results(joined(&paths).into());
+                            ui.set_has_results(true);
+                            shared.borrow_mut().result_directory = Some(dir);
                             report(
                                 &ui,
-                                Err(
-                                    "Analysis worker stopped unexpectedly. Partial files may remain."
-                                        .into(),
-                                ),
+                                Ok(format!(
+                                    "Analysis complete · {} files generated.",
+                                    paths.len()
+                                )),
                             );
                         }
-                        return;
+                        Err(e) => {
+                            ui.set_results("Analysis failed. See the message below.".into());
+                            report(&ui, Err(e));
+                        }
                     }
-                };
-                if let Some(timer) = timer_callback.upgrade() {
-                    timer.stop();
-                }
-                let Some(ui) = weak.upgrade() else {
+                },
+            );
+            return;
+        }
+        let mpa_file = shared.borrow().file.clone();
+        if let Some(file) = mpa_file {
+            let rois = match mpa_roi_parameters(&ui) {
+                Ok(r) => r,
+                Err(e) => {
+                    report(&ui, Err(e));
                     return;
-                };
-                match result {
-                    Ok(paths) => {
-                        ui.set_results(joined(&paths).into());
-                        ui.set_has_results(true);
-                        shared.borrow_mut().result_directory = Some(dir);
-                        report(
-                            &ui,
-                            Ok(format!(
-                                "Analysis complete · {} files generated.",
-                                paths.len()
-                            )),
-                        );
-                    }
-                    Err(e) => {
-                        ui.set_results("Analysis failed. See the message below.".into());
-                        report(&ui, Err(e));
-                    }
                 }
-            },
-        );
+            };
+            let selected_spectrum = ui.get_spectrum();
+            ui.set_busy(true);
+            ui.set_error(false);
+            ui.set_status("Computing ROI statistics and rendering the spectrum chart…".into());
+            ui.set_has_results(false);
+            ui.set_results("Analysis in progress…".into());
+            ui.set_warnings("".into());
+            let weak = ui.as_weak();
+            let (sender, receiver) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let result = gui_state::mpa_analyze(&file, selected_spectrum, &rois);
+                let _ = sender.send(result);
+            });
+            let timer = timer_analyze.clone();
+            let timer_callback = Rc::downgrade(&timer);
+            timer.start(
+                slint::TimerMode::Repeated,
+                std::time::Duration::from_millis(50),
+                move || {
+                    let result = match receiver.try_recv() {
+                        Ok(value) => value,
+                        Err(std::sync::mpsc::TryRecvError::Empty) => return,
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                            if let Some(timer) = timer_callback.upgrade() {
+                                timer.stop();
+                            }
+                            if let Some(ui) = weak.upgrade() {
+                                report(
+                                    &ui,
+                                    Err("Analysis worker stopped unexpectedly".into()),
+                                );
+                            }
+                            return;
+                        }
+                    };
+                    if let Some(timer) = timer_callback.upgrade() {
+                        timer.stop();
+                    }
+                    let Some(ui) = weak.upgrade() else {
+                        return;
+                    };
+                    match result {
+                        Ok(analysis) => {
+                            ui.set_results(
+                                gui_state::format_roi_statistics(&analysis.stats).into(),
+                            );
+                            let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
+                                &analysis.chart.rgb,
+                                analysis.chart.width,
+                                analysis.chart.height,
+                            );
+                            ui.set_spectrum_chart(slint::Image::from_rgb8(buffer));
+                            report(&ui, Ok("ROI statistics computed.".into()));
+                        }
+                        Err(e) => {
+                            ui.set_results("Analysis failed. See the message below.".into());
+                            report(&ui, Err(e));
+                        }
+                    }
+                },
+            );
+            return;
+        }
+        report(&ui, Err("Open a list-mode or MPA measurement first".into()));
     });
 
     let weak = ui.as_weak();
@@ -976,6 +1063,124 @@ mod tests {
         assert!(
             clicked.get(),
             "Convert must be reachable after picking the Convert card and loading an .mpa file"
+        );
+    }
+
+    #[test]
+    fn mpa_analyze_computes_roi_statistics_and_renders_chart() {
+        use i_slint_backend_testing::ElementHandle;
+        slint::platform::set_platform(Box::new(i_slint_backend_testing::TestingBackend::new(
+            i_slint_backend_testing::TestingBackendOptions {
+                mock_time: true,
+                renderer_name: Some("software".into()),
+                ..Default::default()
+            },
+        )))
+        .unwrap();
+        let ui = MainWindow::new().unwrap();
+        ui.set_screen(SCREEN_ANALYZE);
+        ui.window().set_size(slint::LogicalSize::new(760., 820.));
+        ui.show().unwrap();
+
+        // Synthetic `.mpa` fixture: one linear ADC (CALOFF=0, CALFACT=1)
+        // with a small peak, the same channel layout Ticket 4's
+        // `roi_statistics_flat_background_net_approx_gross` test uses.
+        let file = Arc::new(
+            moulinette::mpa::parse(
+                b"[ADC1]\ncaloff=0\ncalfact=1\n[DATA0,9]\n0\n0\n0\n10\n20\n10\n0\n0\n0\n",
+            )
+            .unwrap(),
+        );
+
+        let rois = Rc::new(VecModel::from(vec![blank_roi()]));
+        ui.set_rois(rois.clone().into());
+        ui.set_roi_units(strings(["keV".into(), "Channel".into()]));
+        ui.set_list_mode(false);
+        ui.set_loaded(true);
+
+        let model = rois.clone();
+        ui.on_add_roi(move || model.push(blank_roi()));
+
+        let weak = ui.as_weak();
+        let shared_file = file.clone();
+        ui.on_analyze(move || {
+            let Some(ui) = weak.upgrade() else {
+                return;
+            };
+            let rois = mpa_roi_parameters(&ui).expect("valid ROIs");
+            let analysis = gui_state::mpa_analyze(&shared_file, ui.get_spectrum(), &rois)
+                .expect("analysis succeeds");
+            ui.set_results(gui_state::format_roi_statistics(&analysis.stats).into());
+            let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
+                &analysis.chart.rgb,
+                analysis.chart.width,
+                analysis.chart.height,
+            );
+            ui.set_spectrum_chart(slint::Image::from_rgb8(buffer));
+        });
+
+        let placeholder = |text: &str| {
+            ElementHandle::find_by_element_type_name(&ui, "LineEdit")
+                .filter(|e| e.accessible_placeholder_text().as_deref() == Some(text))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(
+            placeholder("Name").len(),
+            1,
+            "mpa ROI editor shown once a .mpa file is loaded on Analyze"
+        );
+        assert!(
+            ElementHandle::find_by_accessible_label(&ui, "Add ROI")
+                .next()
+                .is_some(),
+            "ROI editor reuses the shared Add ROI row widget"
+        );
+
+        // Add a second row through the widget, then configure the first row
+        // as a keV-unit ROI over the peak: with CALOFF=0/CALFACT=1, low=3
+        // and high=7 resolve to the 0-based channel range [2, 6].
+        ElementHandle::find_by_accessible_label(&ui, "Add ROI")
+            .next()
+            .unwrap()
+            .invoke_accessible_default_action();
+        assert_eq!(rois.row_count(), 2);
+        placeholder("Name")[0].set_accessible_value("peak");
+        placeholder("Low")[0].set_accessible_value("3");
+        placeholder("High")[0].set_accessible_value("7");
+        rois.remove(1);
+
+        // Drive the footer action exactly like
+        // `list_mode_panel_switches_and_edits_rows` drives "Run list-mode
+        // analysis", confirming the button is relabelled for this third
+        // (`.mpa` on Analyze) case.
+        ui.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerScrolled {
+                position: slint::LogicalPosition::new(10., 200.),
+                delta_x: 0.,
+                delta_y: -5000.,
+            });
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(500));
+        ElementHandle::find_by_accessible_label(&ui, "Compute ROI statistics")
+            .next()
+            .expect("footer button relabelled for .mpa Analyze")
+            .invoke_accessible_default_action();
+
+        // Ticket 4's own computation over the same ROI is the ground truth.
+        let expected_rois = [gui_state::RoiSpec {
+            name: "peak".into(),
+            adc: 1,
+            low: 3.0,
+            high: 7.0,
+            unit: gui_state::RoiUnit::Kev,
+        }];
+        let expected_stats = gui_state::roi_statistics(&file.spectra[0], &expected_rois).unwrap();
+        assert_eq!(expected_stats[0].gross, 40.0);
+        assert_eq!(expected_stats[0].net, 40.0);
+        assert_eq!(expected_stats[0].centroid, 4.0);
+        assert_eq!(
+            ui.get_results().to_string(),
+            gui_state::format_roi_statistics(&expected_stats),
+            "stats table reflects Ticket 4's computed values"
         );
     }
 }

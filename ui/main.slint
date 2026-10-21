@@ -50,9 +50,10 @@ export component MainWindow inherits Window {
     // panel variant renders is still decided by `list-mode` alone, since a
     // loaded file's extension does not change when the screen changes.
     in-out property <int> screen: 0;
-    // True once a loaded file's extension does not match the current
-    // screen (e.g. a .lst file opened on the Convert screen).
-    property <bool> mismatched: root.loaded && ((root.screen == 1 && root.list-mode) || (root.screen == 2 && !root.list-mode));
+    // Static (pre-interactive; Ticket 7 upgrades this) spectrum chart for
+    // the `.mpa` Analyze panel, with each configured ROI's channel range
+    // shown as a shaded band.
+    in property <image> spectrum-chart;
     callback go-home();
     callback pick-convert();
     callback pick-analyze();
@@ -132,7 +133,7 @@ export component MainWindow inherits Window {
                 Text { text: root.input-path; color: root.muted; overflow: elide; }
             }
         }
-        if root.screen != 0 && !root.mismatched && root.list-mode: Panel {
+        if root.screen != 0 && root.list-mode: Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 12px;
@@ -141,7 +142,7 @@ export component MainWindow inherits Window {
                 TextEdit { text: root.inspection; read-only: true; min-height: 80px; max-height: 160px; }
             }
         }
-        if root.screen != 0 && !root.mismatched && root.list-mode: Panel {
+        if root.screen != 0 && root.list-mode: Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 10px;
@@ -184,7 +185,10 @@ export component MainWindow inherits Window {
                 Text { text: "Existing files are never overwritten."; color: root.muted; font-size: 12px; }
             }
         }
-        if root.screen != 0 && !root.mismatched && !root.list-mode: HorizontalLayout {
+        // Shown on Convert always, and on Analyze until a file is loaded
+        // (there is nothing better to show yet); once a `.mpa` file loads
+        // on Analyze, the ROI/chart panel below takes over.
+        if (root.screen == 1 || (root.screen == 2 && !root.loaded)) && !root.list-mode: HorizontalLayout {
             spacing: 16px;
             Panel {
                 dark: root.dark;
@@ -226,7 +230,37 @@ export component MainWindow inherits Window {
                 }
             }
         }
-        if root.screen != 0 && !root.mismatched: Panel {
+        // `.mpa` measurement opened on the Analyze screen: an ROI editor
+        // (the same row markup as the list-mode panel's, minus the
+        // time-window section, which is `.lst`-only) plus a static
+        // `plotters` spectrum chart shaded with each ROI's channel range.
+        // Statistics (Ticket 4) are reported in the shared Results panel
+        // below, like conversion/list-mode outputs.
+        if root.screen == 2 && root.loaded && !root.list-mode: Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 10px;
+                Text { text: "Spectrum ROI analysis"; color: root.ink; font-size: 18px; font-weight: 600; }
+                Text { text: "Gross/net counts, centroid and width per ROI, over the loaded spectrum."; color: root.muted; wrap: word-wrap; }
+                Text { text: "Regions of interest · name, ADC (1–8), low and high bounds, unit"; color: root.muted; }
+                for roi[index] in root.rois: HorizontalLayout {
+                    spacing: 8px;
+                    LineEdit { text <=> roi.name; placeholder-text: "Name"; min-width: 80px; horizontal-stretch: 2; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> roi.adc; placeholder-text: "ADC"; min-width: 50px; horizontal-stretch: 1; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> roi.low; placeholder-text: "Low"; min-width: 60px; horizontal-stretch: 1; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    LineEdit { text <=> roi.high; placeholder-text: "High"; min-width: 60px; horizontal-stretch: 1; enabled: !root.busy; edited => { root.settings-changed(); } }
+                    ComboBox { model: root.roi-units; current-index <=> roi.unit; min-width: 90px; horizontal-stretch: 0; enabled: !root.busy; selected => { root.settings-changed(); } }
+                    Button { text: "Remove"; enabled: !root.busy; clicked => { root.remove-roi(index); } }
+                }
+                HorizontalLayout {
+                    alignment: start;
+                    Button { text: "Add ROI"; enabled: !root.busy; clicked => { root.add-roi(); } }
+                }
+                Text { text: "Spectrum chart"; color: root.muted; }
+                Image { source: root.spectrum-chart; height: 320px; image-fit: contain; }
+            }
+        }
+        if root.screen != 0: Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 8px;
@@ -242,10 +276,10 @@ export component MainWindow inherits Window {
             spacing: 12px;
             if root.busy: Spinner { }
             Text { text: root.status; color: root.error ? (root.dark ? #ffaaaa : #a52626) : root.ink; wrap: word-wrap; }
-            if !root.mismatched: Button {
-                text: root.busy ? "Working…" : root.list-mode ? "Run list-mode analysis" : "Convert measurement";
+            Button {
+                text: root.busy ? "Working…" : root.list-mode ? "Run list-mode analysis" : root.screen == 2 ? "Compute ROI statistics" : "Convert measurement";
                 primary: true; enabled: root.loaded && !root.busy;
-                clicked => { if root.list-mode { root.analyze(); } else { root.convert(); } }
+                clicked => { if root.list-mode || root.screen == 2 { root.analyze(); } else { root.convert(); } }
             }
         }
     }

@@ -370,15 +370,11 @@ fn time_window((start, end): (&str, &str), row: usize) -> Result<TimeWindow, Str
     Ok(TimeWindow { start_s, end_s })
 }
 
-/// Validate the list-mode panel's inputs: ROI rows, time-bin width in
-/// milliseconds, optional time windows (start/end seconds) and output
-/// directory. The directory may not exist yet; it is created on run.
-pub fn list_mode_parameters(
-    rois: &[RoiFields],
-    bin_width_ms: &str,
-    windows: &[(&str, &str)],
-    output_dir: &str,
-) -> Result<ListParameters, String> {
+/// Validate a set of ROI rows shared by both the `.lst` list-mode panel and
+/// the `.mpa` Analyze-screen ROI editor: each row must parse (`roi`), and
+/// names must be unique (case-insensitive, since names become filenames on
+/// Windows).
+fn validated_rois(rois: &[RoiFields]) -> Result<Vec<RoiSpec>, String> {
     if rois.is_empty() {
         return Err("Add at least one ROI".into());
     }
@@ -388,7 +384,6 @@ pub fn list_mode_parameters(
         .map(|(i, fields)| roi(fields, i + 1))
         .collect::<Result<Vec<_>, _>>()?;
     for (i, spec) in rois.iter().enumerate() {
-        // Case-insensitive: Windows filenames are, and names become filenames.
         if rois[..i]
             .iter()
             .any(|other| other.name.eq_ignore_ascii_case(&spec.name))
@@ -400,6 +395,26 @@ pub fn list_mode_parameters(
             ));
         }
     }
+    Ok(rois)
+}
+
+/// Validate the `.mpa` Analyze-screen ROI editor's rows: the same ROI rows
+/// as the list-mode panel, but with no time-bin width, time windows or
+/// output directory, since this path writes no files.
+pub fn mpa_roi_parameters(rois: &[RoiFields]) -> Result<Vec<RoiSpec>, String> {
+    validated_rois(rois)
+}
+
+/// Validate the list-mode panel's inputs: ROI rows, time-bin width in
+/// milliseconds, optional time windows (start/end seconds) and output
+/// directory. The directory may not exist yet; it is created on run.
+pub fn list_mode_parameters(
+    rois: &[RoiFields],
+    bin_width_ms: &str,
+    windows: &[(&str, &str)],
+    output_dir: &str,
+) -> Result<ListParameters, String> {
+    let rois = validated_rois(rois)?;
     let dt_ms = bin_width_ms
         .trim()
         .parse::<u64>()
@@ -747,6 +762,124 @@ pub fn roi_statistics(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<Vec<RoiSt
             })
         })
         .collect()
+}
+
+/// Raw RGB8 pixels of a rendered chart (row-major, 3 bytes per pixel),
+/// ready to wrap as a `slint::Image` via `SharedPixelBuffer::<Rgb8Pixel>`.
+pub struct MpaChart {
+    pub width: u32,
+    pub height: u32,
+    pub rgb: Vec<u8>,
+}
+
+/// Result of the `.mpa` Analyze-screen ROI run: per-ROI statistics (Ticket
+/// 4) and a static spectrum chart with each ROI's channel range shaded.
+pub struct MpaAnalysis {
+    pub stats: Vec<RoiStatistics>,
+    pub chart: MpaChart,
+}
+
+/// Run the `.mpa` Analyze-screen ROI analysis: resolve `rois` against the
+/// spectrum selected by `selected_spectrum` (the "Spectra to convert"
+/// combo's convention: `0` means "All spectra", resolved here to the first
+/// spectrum since statistics need exactly one; `n` means `spectra[n - 1]`),
+/// then compute statistics and render the static spectrum chart.
+pub fn mpa_analyze(
+    file: &MpaFile,
+    selected_spectrum: i32,
+    rois: &[RoiSpec],
+) -> Result<MpaAnalysis, String> {
+    let index = if selected_spectrum > 0 {
+        (selected_spectrum - 1) as usize
+    } else {
+        0
+    };
+    let spectrum = file
+        .spectra
+        .get(index)
+        .ok_or_else(|| "No spectra loaded".to_string())?;
+    let stats = roi_statistics(spectrum, rois)?;
+    let chart = render_mpa_chart(spectrum, rois)?;
+    Ok(MpaAnalysis { stats, chart })
+}
+
+/// Format `stats` as the plain-text results table shown in the shared
+/// Results panel (`TextEdit`), one line per ROI.
+pub fn format_roi_statistics(stats: &[RoiStatistics]) -> String {
+    if stats.is_empty() {
+        return "No ROIs configured.".into();
+    }
+    stats
+        .iter()
+        .map(|s| {
+            format!(
+                "{}: gross {:.1} · net {:.1} · centroid {:.2} · width {:.2}",
+                s.name, s.gross, s.net, s.centroid, s.width
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Render `spectrum`'s channel counts with each of `rois`'s resolved
+/// channel range shown as a shaded band, as raw RGB8 pixels via
+/// `plotters`' `BitMapBackend::with_buffer`. A one-off static render for
+/// this panel; ticket 7 generalizes chart rendering into a shared
+/// interactive module. An ROI whose bounds cannot be resolved against this
+/// spectrum (e.g. missing calibration) is skipped rather than failing the
+/// whole chart, since `roi_statistics` already reports that error.
+fn render_mpa_chart(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<MpaChart, String> {
+    use plotters::prelude::*;
+    use plotters::style::Palette;
+
+    let (width, height) = (900u32, 500u32);
+    let n = spectrum.channels.len().max(1);
+    let counts: Vec<f64> = (0..spectrum.channels.len())
+        .map(|i| channel_count(&spectrum.channels[i], i))
+        .collect::<Result<_, _>>()?;
+    let y_max = counts.iter().cloned().fold(0.0f64, f64::max).max(1.0) * 1.1;
+
+    let mut rgb = vec![0u8; width as usize * height as usize * 3];
+    {
+        let root = BitMapBackend::with_buffer(&mut rgb, (width, height)).into_drawing_area();
+        root.fill(&WHITE).map_err(|e| e.to_string())?;
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Spectrum with ROI bands", ("sans-serif", 20))
+            .margin(10)
+            .x_label_area_size(35)
+            .y_label_area_size(50)
+            .build_cartesian_2d(0f64..n as f64, 0f64..y_max)
+            .map_err(|e| e.to_string())?;
+        chart
+            .configure_mesh()
+            .x_desc("Channel")
+            .y_desc("Counts")
+            .draw()
+            .map_err(|e| e.to_string())?;
+
+        for (i, spec) in rois.iter().enumerate() {
+            if let Ok((start, end)) = roi_channel_bounds(spectrum, spec) {
+                let color = Palette99::pick(i).to_rgba();
+                chart
+                    .draw_series(std::iter::once(Rectangle::new(
+                        [(start as f64, 0.0), ((end + 1) as f64, y_max)],
+                        color.mix(0.25).filled(),
+                    )))
+                    .map_err(|e| e.to_string())?;
+            }
+        }
+
+        let points: Vec<(f64, f64)> = counts
+            .iter()
+            .enumerate()
+            .map(|(i, &c)| (i as f64, c))
+            .collect();
+        chart
+            .draw_series(LineSeries::new(points, &BLACK))
+            .map_err(|e| e.to_string())?;
+        root.present().map_err(|e| e.to_string())?;
+    }
+    Ok(MpaChart { width, height, rgb })
 }
 
 #[cfg(test)]
