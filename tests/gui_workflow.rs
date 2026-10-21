@@ -1,10 +1,85 @@
-use moulinette::{conversion::Format, gui_state, mpa, workflow};
+use moulinette::{
+    conversion::Format,
+    gui_state,
+    mpa::{self, MpaFile},
+    workflow,
+};
 use std::{
     fs,
     path::Path,
     sync::atomic::{AtomicUsize, Ordering},
 };
 static NEXT: AtomicUsize = AtomicUsize::new(0);
+
+fn le(words: &[u16]) -> Vec<u8> {
+    words.iter().flat_map(|w| w.to_le_bytes()).collect()
+}
+
+/// A minimal synthetic `.lst` fixture: one linear ADC (energy == channel)
+/// with four events on ADC1 at channels 25, 30, 10 and 99, the same layout
+/// used by `gui_state`'s and the `list` CLI's own fixtures.
+fn synthetic_lst() -> Vec<u8> {
+    let mut bytes =
+        b"[ADC1]\r\ncaloff=0\r\ncalfact=1\r\ntimerreduce=100\r\nnchannels=4096\r\n[LISTDATA]".to_vec();
+    bytes.extend(le(&[0x0001, 0x0000, 0x0019]));
+    bytes.extend(le(&[0x0000, 0x4000]));
+    bytes.extend(le(&[0x0001, 0x0000, 0x001E]));
+    for _ in 0..11 {
+        bytes.extend(le(&[0x0000, 0x4000]));
+    }
+    bytes.extend(le(&[0x0001, 0x0000, 0x000A]));
+    bytes.extend(le(&[0x0000, 0x4000]));
+    bytes.extend(le(&[0x0001, 0x0000, 0x0063]));
+    bytes
+}
+
+/// Ticket 3: loading a `.lst` file on the Convert screen reuses the
+/// converter panel over a Ticket 2 histogram instead of an `MpaFile`
+/// produced by `workflow::load`.
+#[test]
+fn lst_convert_writes_histogram_as_xy() {
+    let dir = std::env::temp_dir().join(format!(
+        "moulinette-lst-convert-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
+    fs::create_dir(&dir).unwrap();
+    let input = dir.join("fixture.lst");
+    fs::write(&input, synthetic_lst()).unwrap();
+
+    // Mirrors gui_state::load_list + the gui.rs Convert-screen branch: parse
+    // the .lst file, then wrap Ticket 2's histogram as a plain `MpaFile` so
+    // workflow::render/conversion::convert run unchanged.
+    let list_file = gui_state::load_list(&input).unwrap();
+    let spectra = gui_state::histogram_list_file(&list_file);
+    assert_eq!(spectra.len(), 1);
+    let wrapped = MpaFile {
+        sections: Vec::new(),
+        spectra: spectra.clone(),
+    };
+
+    // Select the one ADC (spectrum index 0) and convert to XY, exactly as
+    // the "Spectra to convert" dropdown would. Mode 0 is `Format::Xy`
+    // (`gui_state::MODES[0]`, as asserted by `mode_mapping_and_validation`).
+    let (format, selection, indices) =
+        gui_state::parameters(0, 0, "0", "", wrapped.spectra.len()).unwrap();
+    assert_eq!(format, Format::Xy);
+    let paths = workflow::filenames(&input, &dir, format, &indices).unwrap();
+    let rendered = workflow::render(&wrapped, format, selection, &indices, paths.clone()).unwrap();
+    let written = workflow::write(rendered, None).unwrap();
+    assert_eq!(written, paths);
+
+    // The written file's contents must match Ticket 2's histogram, converted
+    // directly, not just the wrapped MpaFile's own round trip.
+    let expected = moulinette::conversion::convert(&spectra[0], format, selection).unwrap();
+    assert_eq!(fs::read(&written[0]).unwrap(), expected);
+
+    for path in written {
+        fs::remove_file(path).unwrap();
+    }
+    fs::remove_file(&input).unwrap();
+    fs::remove_dir(dir).unwrap();
+}
 
 #[test]
 fn dropped_measurement_rejects_invalid_batches_and_busy_work() {

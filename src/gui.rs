@@ -276,7 +276,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             return;
         }
         let list_mode = gui_state::is_list_mode(&path);
-        ui.set_list_mode(list_mode);
+        // On the Convert screen, a `.lst` file is histogrammed and shown
+        // through the converter panel rather than the list-mode (ROI) panel,
+        // so the UI-facing flag only reflects list-mode outside Convert.
+        ui.set_list_mode(list_mode && ui.get_screen() != SCREEN_CONVERT);
         ui.set_drop_hint("".into());
         ui.set_busy(true);
         ui.set_loaded(false);
@@ -360,12 +363,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         ui.set_loaded(true);
                         ui.set_has_results(false);
                         ui.set_warnings("".into());
-                        // The loaded file's extension (`list_mode`) may not match the
-                        // screen it was opened from; Tickets 3/5 implement that
-                        // combination, so this ticket only reports it as unsupported.
+                        // Loading an `.mpa` file on the Analyze screen is still
+                        // unsupported; loading an `.lst` file on the Convert
+                        // screen is handled below via the Ticket 2 histogram.
                         let screen = ui.get_screen();
-                        let mismatched = (screen == SCREEN_CONVERT && list_mode)
-                            || (screen == SCREEN_ANALYZE && !list_mode);
+                        let mismatched = screen == SCREEN_ANALYZE && !list_mode;
                         let mut state = shared.borrow_mut();
                         state.input = path;
                         state.result_directory = None;
@@ -387,6 +389,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 ui.set_spectrum(0);
                                 ui.set_results("No conversion yet.".into());
                                 state.file = Some(Arc::new(file));
+                                format!("Measurement ready · {count} spectra.")
+                            }
+                            Measurement::List(file) if screen == SCREEN_CONVERT => {
+                                // Reuse the converter panel over a Ticket 2
+                                // histogram, one spectrum per ADC.
+                                let wrapped = MpaFile {
+                                    sections: Vec::new(),
+                                    spectra: gui_state::histogram_list_file(&file),
+                                };
+                                let count = wrapped.spectra.len();
+                                ui.set_spectra(strings(
+                                    std::iter::once("All spectra".into()).chain(
+                                        wrapped.spectra.iter().enumerate().map(|(i, s)| {
+                                            format!(
+                                                "Spectrum {} · ADC{} · {} channels",
+                                                i + 1,
+                                                s.adc_index,
+                                                s.declared_channels
+                                            )
+                                        }),
+                                    ),
+                                ));
+                                ui.set_spectrum(0);
+                                ui.set_results("No conversion yet.".into());
+                                state.file = Some(Arc::new(wrapped));
                                 format!("Measurement ready · {count} spectra.")
                             }
                             Measurement::List(file) => {
