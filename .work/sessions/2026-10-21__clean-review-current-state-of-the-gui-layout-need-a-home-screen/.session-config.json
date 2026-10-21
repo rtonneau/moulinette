@@ -91,6 +91,30 @@
         "ticket": "01-home-screen-navigation",
         "commit": "2a8f3e7"
       }
+    },
+    {
+      "at": "2026-10-21T10:50:01.296Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/02-lst-histogram-spectrum.md",
+        "03-implement/02-lst-histogram-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-lst-histogram-spectrum"
+      }
+    },
+    {
+      "at": "2026-10-21T10:54:32.140Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/02-lst-histogram-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "02-lst-histogram-spectrum",
+        "commit": "0f03895"
+      }
     }
   ],
   "current_phase": "ship",
