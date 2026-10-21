@@ -514,10 +514,21 @@ pub fn list_inspection(file: &ListFile) -> String {
 }
 
 /// Run the list-mode analysis on a parsed file: resolve each ROI, compute
-/// its time-binned rate, then write the rate CSVs, the rate-vs-time PNG and
-/// (with time windows) one violin PNG per ROI. Every destination is checked
-/// before anything is written, and each writer also refuses existing files.
+/// its time-binned rate (`rate_series`), then write the rate CSVs, the
+/// rate-vs-time PNG and (with time windows) one violin PNG per ROI
+/// (`list_mode_write`). Every destination is checked before anything is
+/// written, and each writer also refuses existing files.
 pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<PathBuf>, String> {
+    list_mode_write(&rate_series(file, params)?, params)
+}
+
+/// Resolve each of `params.rois` against `file` and compute its time-binned
+/// rate: one named series per ROI, in ROI order. This is the data behind
+/// both `list_mode_write`'s files and the in-window rate-vs-time chart.
+pub fn rate_series(
+    file: &ListFile,
+    params: &ListParameters,
+) -> Result<Vec<(String, Vec<RateBin>)>, String> {
     let mut series: Vec<(String, Vec<RateBin>)> = Vec::new();
     for spec in &params.rois {
         let roi = match spec.unit {
@@ -546,7 +557,18 @@ pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<Pat
             rate::time_binned_rate(&file.events, spec.adc, Some(&roi), 0, None, params.dt_ms);
         series.push((spec.name.clone(), bins));
     }
+    Ok(series)
+}
 
+/// Write a list-mode run's files (`list_mode_outputs`) from `series`, as
+/// computed by `rate_series` for the same `params`: the rate CSVs, the
+/// rate-vs-time PNG and (with time windows) one violin PNG per ROI. Every
+/// destination is checked before anything is written, and each writer also
+/// refuses existing files.
+pub fn list_mode_write(
+    series: &[(String, Vec<RateBin>)],
+    params: &ListParameters,
+) -> Result<Vec<PathBuf>, String> {
     let paths = list_mode_outputs(params);
     for (i, path) in paths.iter().enumerate() {
         if paths[..i].contains(path) {
@@ -568,17 +590,17 @@ pub fn list_mode_run(file: &ListFile, params: &ListParameters) -> Result<Vec<Pat
     let partial = |e: String| format!("{e}. Earlier files in this run may have been written.");
     let mut generated = Vec::new();
     let mut paths = paths.into_iter();
-    for (_, bins) in &series {
+    for (_, bins) in series {
         let path = paths.next().expect("one CSV per ROI");
         plot::write_rate_csv(bins, &path)
             .map_err(|e| partial(format!("cannot write {}: {e}", path.display())))?;
         generated.push(path);
     }
     let path = paths.next().expect("rate-vs-time PNG");
-    plot::rate_vs_time(&series, &path).map_err(|e| partial(e.to_string()))?;
+    plot::rate_vs_time(series, &path).map_err(|e| partial(e.to_string()))?;
     generated.push(path);
     if !params.windows.is_empty() {
-        for (_, bins) in &series {
+        for (_, bins) in series {
             let path = paths.next().expect("one violin PNG per ROI");
             let groups: Vec<(String, Vec<f64>)> = params
                 .windows

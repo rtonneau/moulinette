@@ -1,6 +1,6 @@
 #![deny(unsafe_code)]
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
-use moulinette::{gui_state, lst::ListFile, mpa::MpaFile, workflow};
+use moulinette::{chart, gui_state, lst::ListFile, mpa::MpaFile, workflow};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 // Slint-generated bindings require unsafe code; handwritten code does not.
@@ -16,6 +16,8 @@ struct State {
     file: Option<Arc<MpaFile>>,
     list: Option<Arc<ListFile>>,
     result_directory: Option<PathBuf>,
+    /// The in-window rate-vs-time chart of the last list-mode run.
+    rate_chart: Option<chart::LineChart>,
 }
 
 /// `MainWindow::screen` values; see the property's doc comment in `main.slint`.
@@ -29,6 +31,7 @@ fn go_home(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
     *shared.borrow_mut() = State::default();
     ui.set_screen(SCREEN_HOME);
     ui.set_list_mode(false);
+    hide_rate_chart(ui);
     ui.set_busy(false);
     ui.set_loaded(false);
     ui.set_has_results(false);
@@ -151,6 +154,138 @@ fn report(ui: &MainWindow, result: Result<String, String>) {
     ui.set_busy(false);
     ui.set_error(result.is_err());
     ui.set_status(result.unwrap_or_else(|e| e).into());
+}
+
+/// Mouse-wheel zoom factor per logical pixel of scroll delta: winit reports
+/// one wheel notch as 60 px, so a notch scales the view by about 0.84.
+const ZOOM_RATE: f64 = 0.003;
+
+fn hide_rate_chart(ui: &MainWindow) {
+    ui.set_rate_chart_ready(false);
+    ui.set_rate_chart_tooltip("".into());
+}
+
+fn show_rate_chart(ui: &MainWindow, chart: &mut chart::LineChart) -> Result<(), String> {
+    let image = chart.render()?;
+    ui.set_rate_chart(image.to_slint_image());
+    ui.set_rate_chart_ready(true);
+    Ok(())
+}
+
+/// Size the chart's buffer to the displaying area's `width` x `height`
+/// (logical) in physical pixels, so it is shown unscaled, and re-render it
+/// whenever that changed or no render matches the current size yet.
+fn fit_rate_chart(
+    ui: &MainWindow,
+    chart: &mut chart::LineChart,
+    width: f32,
+    height: f32,
+) -> Result<(), String> {
+    if !(width > 0. && height > 0.) {
+        return Ok(());
+    }
+    let scale = ui.window().scale_factor();
+    let resized = chart.set_size(
+        (width * scale).round() as u32,
+        (height * scale).round() as u32,
+    );
+    if resized || chart.area().is_none() {
+        show_rate_chart(ui, chart)?;
+    }
+    Ok(())
+}
+
+/// Show the tooltip and marker for the data point nearest to `(x, y)` in
+/// the chart area's logical coordinates, or hide them.
+fn hover_rate_chart(ui: &MainWindow, chart: &chart::LineChart, x: f32, y: f32, w: f32, h: f32) {
+    let element = (f64::from(w), f64::from(h));
+    let cursor = chart::element_to_buffer((f64::from(x), f64::from(y)), element, chart.size());
+    match chart.nearest(cursor) {
+        Some(hover) => {
+            let (mx, my) = chart::buffer_to_element(hover.pixel, element, chart.size());
+            ui.set_rate_chart_marker_x(mx as f32);
+            ui.set_rate_chart_marker_y(my as f32);
+            ui.set_rate_chart_tooltip(chart.tooltip(&hover).into());
+        }
+        None => ui.set_rate_chart_tooltip("".into()),
+    }
+}
+
+/// Wire the rate-vs-time chart area's resize/zoom/pan/hover/reset callbacks
+/// to `State::rate_chart`. Only the in-window view changes; the files of the
+/// run are already written.
+fn install_rate_chart(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
+    // Runs `f` on the current chart; a render failure is reported in the
+    // status line rather than aborting the interaction.
+    fn with_chart(
+        weak: &slint::Weak<MainWindow>,
+        shared: &Rc<RefCell<State>>,
+        f: impl FnOnce(&MainWindow, &mut chart::LineChart) -> Result<(), String>,
+    ) {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        let mut state = shared.borrow_mut();
+        let Some(chart) = state.rate_chart.as_mut() else {
+            return;
+        };
+        if let Err(e) = f(&ui, chart) {
+            report(&ui, Err(format!("Cannot draw the rate chart: {e}")));
+        }
+    }
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_rate_chart_resized(move |w, h| {
+        with_chart(&weak, &state, |ui, chart| fit_rate_chart(ui, chart, w, h));
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_rate_chart_zoom(move |x, y, delta, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_rate_chart(ui, chart, w, h)?;
+            let cursor = chart::element_to_buffer(
+                (f64::from(x), f64::from(y)),
+                (f64::from(w), f64::from(h)),
+                chart.size(),
+            );
+            // Scrolling up (positive delta) zooms in.
+            chart.zoom(cursor, (-f64::from(delta) * ZOOM_RATE).exp());
+            show_rate_chart(ui, chart)?;
+            hover_rate_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_rate_chart_pan(move |from_x, from_y, to_x, to_y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_rate_chart(ui, chart, w, h)?;
+            let element = (f64::from(w), f64::from(h));
+            let from =
+                chart::element_to_buffer((f64::from(from_x), f64::from(from_y)), element, chart.size());
+            let to = chart::element_to_buffer((f64::from(to_x), f64::from(to_y)), element, chart.size());
+            chart.pan(from, to);
+            show_rate_chart(ui, chart)
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_rate_chart_hover(move |x, y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_rate_chart(ui, chart, w, h)?;
+            hover_rate_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_rate_chart_reset(move || {
+        with_chart(&weak, &state, |ui, chart| {
+            chart.reset();
+            ui.set_rate_chart_tooltip("".into());
+            show_rate_chart(ui, chart)
+        });
+    });
 }
 
 // Winit 0.30 delivers one event per file and no position with the drop.
@@ -296,6 +431,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui.set_busy(true);
         ui.set_loaded(false);
         ui.set_has_results(false);
+        hide_rate_chart(&ui);
         ui.set_filename(
             path.file_name()
                 .unwrap_or_default()
@@ -653,12 +789,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ui.set_has_results(false);
             ui.set_results("Analysis in progress…".into());
             ui.set_warnings(gui_state::LIST_MODE_WARNINGS.into());
+            hide_rate_chart(&ui);
+            shared.borrow_mut().rate_chart = None;
             let weak = ui.as_weak();
             let shared = shared.clone();
             let (sender, receiver) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
-                let result = gui_state::list_mode_run(&file, &params);
-                let _ = sender.send((params.output_dir, result));
+                // The series are binned once, then feed both the written
+                // files (`list_mode_write`, as in `list_mode_run`) and the
+                // in-window chart, rendered here at its default size.
+                let (result, chart) = match gui_state::rate_series(&file, &params) {
+                    Ok(series) => {
+                        let written = gui_state::list_mode_write(&series, &params);
+                        let mut chart = chart::LineChart::rate_vs_time(&series);
+                        let image = chart.render();
+                        (written, Some((chart, image)))
+                    }
+                    Err(e) => (Err(e), None),
+                };
+                let _ = sender.send((params.output_dir, result, chart));
             });
             let timer = timer_analyze.clone();
             let timer_callback = Rc::downgrade(&timer);
@@ -666,7 +815,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 slint::TimerMode::Repeated,
                 std::time::Duration::from_millis(50),
                 move || {
-                    let (dir, result) = match receiver.try_recv() {
+                    let (dir, result, chart) = match receiver.try_recv() {
                         Ok(value) => value,
                         Err(std::sync::mpsc::TryRecvError::Empty) => return,
                         Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -691,18 +840,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let Some(ui) = weak.upgrade() else {
                         return;
                     };
+                    // The chart shows the computed series even when writing
+                    // the files failed (e.g. an output already exists).
+                    let chart_error = match chart {
+                        Some((chart, Ok(image))) => {
+                            shared.borrow_mut().rate_chart = Some(chart);
+                            ui.set_rate_chart(image.to_slint_image());
+                            ui.set_rate_chart_ready(true);
+                            None
+                        }
+                        Some((_, Err(e))) => Some(e),
+                        None => None,
+                    };
                     match result {
                         Ok(paths) => {
                             ui.set_results(joined(&paths).into());
                             ui.set_has_results(true);
                             shared.borrow_mut().result_directory = Some(dir);
-                            report(
-                                &ui,
-                                Ok(format!(
-                                    "Analysis complete · {} files generated.",
-                                    paths.len()
-                                )),
-                            );
+                            let mut message =
+                                format!("Analysis complete · {} files generated.", paths.len());
+                            if let Some(e) = chart_error {
+                                message.push_str(&format!(
+                                    " The in-window chart could not be drawn: {e}"
+                                ));
+                            }
+                            report(&ui, Ok(message));
                         }
                         Err(e) => {
                             ui.set_results("Analysis failed. See the message below.".into());
@@ -812,6 +974,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ui.set_screen(SCREEN_ANALYZE);
         }
     });
+
+    install_rate_chart(&ui, &state);
 
     let weak = ui.as_weak();
     ui.on_open_directory(move || {

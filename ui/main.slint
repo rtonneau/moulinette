@@ -54,6 +54,26 @@ export component MainWindow inherits Window {
     // the `.mpa` Analyze panel, with each configured ROI's channel range
     // shown as a shaded band.
     in property <image> spectrum-chart;
+    // Interactive rate-vs-time chart of the last `.lst` analysis run,
+    // rendered by `chart::LineChart` (Rust) at the chart area's size. The
+    // callbacks report cursor positions in the chart area's own logical
+    // coordinates plus its current width/height; Rust maps them to buffer
+    // pixels, updates the view range and re-renders `rate-chart`.
+    in property <image> rate-chart;
+    in property <bool> rate-chart-ready;
+    // Nearest-point tooltip text ("" hides it) and that point's position
+    // in the chart area's logical coordinates.
+    in property <string> rate-chart-tooltip;
+    in property <float> rate-chart-marker-x;
+    in property <float> rate-chart-marker-y;
+    callback rate-chart-resized(float, float);
+    // x, y, wheel delta-y, width, height.
+    callback rate-chart-zoom(float, float, float, float, float);
+    // from-x, from-y, to-x, to-y, width, height.
+    callback rate-chart-pan(float, float, float, float, float, float);
+    // x, y, width, height.
+    callback rate-chart-hover(float, float, float, float);
+    callback rate-chart-reset();
     callback go-home();
     callback pick-convert();
     callback pick-analyze();
@@ -183,6 +203,64 @@ export component MainWindow inherits Window {
                 Text { text: "Expected files"; color: root.muted; }
                 TextEdit { text: root.preview; read-only: true; min-height: 60px; }
                 Text { text: "Existing files are never overwritten."; color: root.muted; font-size: 12px; }
+            }
+        }
+        // In-window view of the last list-mode run's rate-vs-time series.
+        // Zooming/panning only changes this view, never the written files.
+        if root.screen != 0 && root.list-mode && root.rate-chart-ready: Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                HorizontalLayout {
+                    Text { text: "Rate vs. time"; color: root.ink; font-size: 18px; font-weight: 600; vertical-alignment: center; }
+                    Button { text: "Reset view"; clicked => { root.rate-chart-reset(); } }
+                }
+                Text { text: "Scroll to zoom around the cursor (over an axis to zoom that axis only), drag to pan, hover for a point's exact values."; color: root.muted; wrap: word-wrap; font-size: 12px; }
+                rate-chart-area := TouchArea {
+                    height: 380px;
+                    accessible-role: image;
+                    accessible-label: "Rate vs. time chart";
+                    mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.crosshair;
+                    property <length> drag-x;
+                    property <length> drag-y;
+                    init => { root.rate-chart-resized(self.width / 1px, self.height / 1px); }
+                    changed width => { root.rate-chart-resized(self.width / 1px, self.height / 1px); }
+                    changed height => { root.rate-chart-resized(self.width / 1px, self.height / 1px); }
+                    scroll-event(event) => {
+                        root.rate-chart-zoom(self.mouse-x / 1px, self.mouse-y / 1px, event.delta-y / 1px, self.width / 1px, self.height / 1px);
+                        accept
+                    }
+                    pointer-event(event) => {
+                        if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {
+                            self.drag-x = self.mouse-x;
+                            self.drag-y = self.mouse-y;
+                        } else if event.kind == PointerEventKind.move {
+                            if self.pressed {
+                                root.rate-chart-pan(self.drag-x / 1px, self.drag-y / 1px, self.mouse-x / 1px, self.mouse-y / 1px, self.width / 1px, self.height / 1px);
+                                self.drag-x = self.mouse-x;
+                                self.drag-y = self.mouse-y;
+                            } else {
+                                root.rate-chart-hover(self.mouse-x / 1px, self.mouse-y / 1px, self.width / 1px, self.height / 1px);
+                            }
+                        }
+                    }
+                    Image { x: 0; y: 0; width: parent.width; height: parent.height; source: root.rate-chart; image-fit: fill; }
+                    if rate-chart-area.has-hover && !rate-chart-area.pressed && root.rate-chart-tooltip != "": Rectangle {
+                        x: root.rate-chart-marker-x * 1px - 5px;
+                        y: root.rate-chart-marker-y * 1px - 5px;
+                        width: 10px; height: 10px; border-radius: 5px;
+                        border-width: 2px; border-color: #17243b;
+                    }
+                    if rate-chart-area.has-hover && !rate-chart-area.pressed && root.rate-chart-tooltip != "": Rectangle {
+                        // Near the cursor, flipped left/up when it would leave the chart.
+                        x: rate-chart-area.mouse-x + 14px + self.width > rate-chart-area.width ? max(0px, rate-chart-area.mouse-x - 8px - self.width) : rate-chart-area.mouse-x + 14px;
+                        y: rate-chart-area.mouse-y + 18px + self.height > rate-chart-area.height ? max(0px, rate-chart-area.mouse-y - 8px - self.height) : rate-chart-area.mouse-y + 18px;
+                        width: tooltip.preferred-width + 12px;
+                        height: tooltip.preferred-height + 8px;
+                        background: #ffffffee; border-width: 1px; border-color: #17243b; border-radius: 4px;
+                        tooltip := Text { x: 6px; y: 4px; text: root.rate-chart-tooltip; color: #17243b; font-size: 12px; }
+                    }
+                }
             }
         }
         // Shown on Convert always, and on Analyze until a file is loaded
