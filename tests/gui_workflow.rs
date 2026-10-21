@@ -232,9 +232,10 @@ fn overwrite_preflight_and_race_protection() {
     fs::remove_dir(dir).unwrap();
 }
 
-/// Ticket 5: the `.mpa` Analyze-screen ROI run (`gui_state::mpa_analyze`)
+/// Ticket 5/7: the `.mpa` Analyze-screen ROI run (`gui_state::mpa_analyze`)
 /// reports the same statistics `roi_statistics` (Ticket 4) computes
-/// directly, and renders a correctly sized static chart buffer.
+/// directly, and builds an in-window `chart::LineChart` (Ticket 6/7) that
+/// renders to a correctly sized buffer.
 #[test]
 fn mpa_analyze_matches_roi_statistics_and_renders_a_correctly_sized_chart() {
     let file =
@@ -261,9 +262,14 @@ fn mpa_analyze_matches_roi_statistics_and_renders_a_correctly_sized_chart() {
     let analysis_selected = gui_state::mpa_analyze(&file, 1, &rois).unwrap();
     assert_eq!(analysis_selected.stats, expected);
 
-    assert_eq!(analysis.chart.width, 900);
-    assert_eq!(analysis.chart.height, 500);
-    assert_eq!(analysis.chart.rgb.len(), 900 * 500 * 3);
+    let mut chart = analysis.chart;
+    let image = chart.render().unwrap();
+    assert_eq!((image.width, image.height), moulinette::chart::DEFAULT_SIZE);
+    assert_eq!(
+        image.rgb.len() as u32,
+        image.width * image.height * 3,
+        "RGB8 buffer has 3 bytes per pixel"
+    );
 
     assert!(gui_state::mpa_analyze(&file, 5, &rois).is_err());
 }

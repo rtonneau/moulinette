@@ -18,6 +18,34 @@ struct State {
     result_directory: Option<PathBuf>,
     /// The in-window rate-vs-time chart of the last list-mode run.
     rate_chart: Option<chart::LineChart>,
+    /// The in-window per-window-group density ("violin") chart of the last
+    /// list-mode run, when it configured at least one time window.
+    violin_chart: Option<chart::LineChart>,
+    /// The in-window spectrum-with-ROI-bands chart of the last `.mpa`
+    /// Analyze run.
+    spectrum_chart: Option<chart::LineChart>,
+}
+
+/// One list-mode analysis run's outcome, sent from the worker thread
+/// (`on_analyze`'s `.lst` branch) back to the UI timer: the written
+/// files' result plus the two in-window charts (rate-vs-time always,
+/// violin only when at least one time window is configured), each
+/// already rendered at its default size off the UI thread.
+struct ListAnalysisOutcome {
+    output_dir: PathBuf,
+    written: Result<Vec<PathBuf>, String>,
+    rate_chart: Option<(chart::LineChart, Result<chart::RgbImage, String>)>,
+    violin_chart: Option<(chart::LineChart, Result<chart::RgbImage, String>)>,
+}
+
+/// One `.mpa` Analyze-screen ROI run's outcome, sent from the worker
+/// thread (`on_analyze`'s `.mpa` branch) back to the UI timer: the
+/// statistics plus the in-window spectrum chart, already rendered at its
+/// default size off the UI thread.
+struct MpaAnalysisOutcome {
+    stats: Vec<gui_state::RoiStatistics>,
+    chart: chart::LineChart,
+    image: Result<chart::RgbImage, String>,
 }
 
 /// `MainWindow::screen` values; see the property's doc comment in `main.slint`.
@@ -32,6 +60,8 @@ fn go_home(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
     ui.set_screen(SCREEN_HOME);
     ui.set_list_mode(false);
     hide_rate_chart(ui);
+    hide_violin_chart(ui);
+    hide_spectrum_chart(ui);
     ui.set_busy(false);
     ui.set_loaded(false);
     ui.set_has_results(false);
@@ -288,6 +318,266 @@ fn install_rate_chart(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
     });
 }
 
+fn hide_violin_chart(ui: &MainWindow) {
+    ui.set_violin_chart_ready(false);
+    ui.set_violin_chart_tooltip("".into());
+}
+
+fn show_violin_chart(ui: &MainWindow, chart: &mut chart::LineChart) -> Result<(), String> {
+    let image = chart.render()?;
+    ui.set_violin_chart(image.to_slint_image());
+    ui.set_violin_chart_ready(true);
+    Ok(())
+}
+
+/// Size the violin chart's buffer to the displaying area's size, like
+/// `fit_rate_chart`.
+fn fit_violin_chart(
+    ui: &MainWindow,
+    chart: &mut chart::LineChart,
+    width: f32,
+    height: f32,
+) -> Result<(), String> {
+    if !(width > 0. && height > 0.) {
+        return Ok(());
+    }
+    let scale = ui.window().scale_factor();
+    let resized = chart.set_size(
+        (width * scale).round() as u32,
+        (height * scale).round() as u32,
+    );
+    if resized || chart.area().is_none() {
+        show_violin_chart(ui, chart)?;
+    }
+    Ok(())
+}
+
+/// Show the tooltip and marker for the nearest group/density point to
+/// `(x, y)`, like `hover_rate_chart`.
+fn hover_violin_chart(ui: &MainWindow, chart: &chart::LineChart, x: f32, y: f32, w: f32, h: f32) {
+    let element = (f64::from(w), f64::from(h));
+    let cursor = chart::element_to_buffer((f64::from(x), f64::from(y)), element, chart.size());
+    match chart.nearest(cursor) {
+        Some(hover) => {
+            let (mx, my) = chart::buffer_to_element(hover.pixel, element, chart.size());
+            ui.set_violin_chart_marker_x(mx as f32);
+            ui.set_violin_chart_marker_y(my as f32);
+            ui.set_violin_chart_tooltip(chart.tooltip(&hover).into());
+        }
+        None => ui.set_violin_chart_tooltip("".into()),
+    }
+}
+
+/// Wire the violin (time-window density) chart area's resize/zoom/pan/
+/// hover/reset callbacks to `State::violin_chart`, exactly like
+/// `install_rate_chart` does for the rate-vs-time chart. Only the
+/// in-window view changes; the per-ROI violin PNGs of the run (`plot::
+/// violin`, via `list_mode_write`) are already written and untouched.
+fn install_violin_chart(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
+    fn with_chart(
+        weak: &slint::Weak<MainWindow>,
+        shared: &Rc<RefCell<State>>,
+        f: impl FnOnce(&MainWindow, &mut chart::LineChart) -> Result<(), String>,
+    ) {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        let mut state = shared.borrow_mut();
+        let Some(chart) = state.violin_chart.as_mut() else {
+            return;
+        };
+        if let Err(e) = f(&ui, chart) {
+            report(&ui, Err(format!("Cannot draw the violin chart: {e}")));
+        }
+    }
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_violin_chart_resized(move |w, h| {
+        with_chart(&weak, &state, |ui, chart| fit_violin_chart(ui, chart, w, h));
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_violin_chart_zoom(move |x, y, delta, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_violin_chart(ui, chart, w, h)?;
+            let cursor = chart::element_to_buffer(
+                (f64::from(x), f64::from(y)),
+                (f64::from(w), f64::from(h)),
+                chart.size(),
+            );
+            chart.zoom(cursor, (-f64::from(delta) * ZOOM_RATE).exp());
+            show_violin_chart(ui, chart)?;
+            hover_violin_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_violin_chart_pan(move |from_x, from_y, to_x, to_y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_violin_chart(ui, chart, w, h)?;
+            let element = (f64::from(w), f64::from(h));
+            let from = chart::element_to_buffer(
+                (f64::from(from_x), f64::from(from_y)),
+                element,
+                chart.size(),
+            );
+            let to =
+                chart::element_to_buffer((f64::from(to_x), f64::from(to_y)), element, chart.size());
+            chart.pan(from, to);
+            show_violin_chart(ui, chart)
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_violin_chart_hover(move |x, y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_violin_chart(ui, chart, w, h)?;
+            hover_violin_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_violin_chart_reset(move || {
+        with_chart(&weak, &state, |ui, chart| {
+            chart.reset();
+            ui.set_violin_chart_tooltip("".into());
+            show_violin_chart(ui, chart)
+        });
+    });
+}
+
+fn hide_spectrum_chart(ui: &MainWindow) {
+    ui.set_spectrum_chart_ready(false);
+    ui.set_spectrum_chart_tooltip("".into());
+}
+
+fn show_spectrum_chart(ui: &MainWindow, chart: &mut chart::LineChart) -> Result<(), String> {
+    let image = chart.render()?;
+    ui.set_spectrum_chart(image.to_slint_image());
+    ui.set_spectrum_chart_ready(true);
+    Ok(())
+}
+
+/// Size the spectrum chart's buffer to the displaying area's size, like
+/// `fit_rate_chart`.
+fn fit_spectrum_chart(
+    ui: &MainWindow,
+    chart: &mut chart::LineChart,
+    width: f32,
+    height: f32,
+) -> Result<(), String> {
+    if !(width > 0. && height > 0.) {
+        return Ok(());
+    }
+    let scale = ui.window().scale_factor();
+    let resized = chart.set_size(
+        (width * scale).round() as u32,
+        (height * scale).round() as u32,
+    );
+    if resized || chart.area().is_none() {
+        show_spectrum_chart(ui, chart)?;
+    }
+    Ok(())
+}
+
+/// Show the tooltip and marker for the nearest channel/count point to
+/// `(x, y)`, like `hover_rate_chart`.
+fn hover_spectrum_chart(ui: &MainWindow, chart: &chart::LineChart, x: f32, y: f32, w: f32, h: f32) {
+    let element = (f64::from(w), f64::from(h));
+    let cursor = chart::element_to_buffer((f64::from(x), f64::from(y)), element, chart.size());
+    match chart.nearest(cursor) {
+        Some(hover) => {
+            let (mx, my) = chart::buffer_to_element(hover.pixel, element, chart.size());
+            ui.set_spectrum_chart_marker_x(mx as f32);
+            ui.set_spectrum_chart_marker_y(my as f32);
+            ui.set_spectrum_chart_tooltip(chart.tooltip(&hover).into());
+        }
+        None => ui.set_spectrum_chart_tooltip("".into()),
+    }
+}
+
+/// Wire the `.mpa` spectrum-with-ROI-bands chart area's resize/zoom/pan/
+/// hover/reset callbacks to `State::spectrum_chart`, exactly like
+/// `install_rate_chart` does for the rate-vs-time chart. ROI bands stay
+/// shaded through pan/zoom since `chart::LineChart::render` redraws them
+/// clipped to the current view every time.
+fn install_spectrum_chart(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
+    fn with_chart(
+        weak: &slint::Weak<MainWindow>,
+        shared: &Rc<RefCell<State>>,
+        f: impl FnOnce(&MainWindow, &mut chart::LineChart) -> Result<(), String>,
+    ) {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        let mut state = shared.borrow_mut();
+        let Some(chart) = state.spectrum_chart.as_mut() else {
+            return;
+        };
+        if let Err(e) = f(&ui, chart) {
+            report(&ui, Err(format!("Cannot draw the spectrum chart: {e}")));
+        }
+    }
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_spectrum_chart_resized(move |w, h| {
+        with_chart(&weak, &state, |ui, chart| fit_spectrum_chart(ui, chart, w, h));
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_spectrum_chart_zoom(move |x, y, delta, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_spectrum_chart(ui, chart, w, h)?;
+            let cursor = chart::element_to_buffer(
+                (f64::from(x), f64::from(y)),
+                (f64::from(w), f64::from(h)),
+                chart.size(),
+            );
+            chart.zoom(cursor, (-f64::from(delta) * ZOOM_RATE).exp());
+            show_spectrum_chart(ui, chart)?;
+            hover_spectrum_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_spectrum_chart_pan(move |from_x, from_y, to_x, to_y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_spectrum_chart(ui, chart, w, h)?;
+            let element = (f64::from(w), f64::from(h));
+            let from = chart::element_to_buffer(
+                (f64::from(from_x), f64::from(from_y)),
+                element,
+                chart.size(),
+            );
+            let to =
+                chart::element_to_buffer((f64::from(to_x), f64::from(to_y)), element, chart.size());
+            chart.pan(from, to);
+            show_spectrum_chart(ui, chart)
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_spectrum_chart_hover(move |x, y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_spectrum_chart(ui, chart, w, h)?;
+            hover_spectrum_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_spectrum_chart_reset(move || {
+        with_chart(&weak, &state, |ui, chart| {
+            chart.reset();
+            ui.set_spectrum_chart_tooltip("".into());
+            show_spectrum_chart(ui, chart)
+        });
+    });
+}
+
 // Winit 0.30 delivers one event per file and no position with the drop.
 // Read the Windows cursor in physical coordinates, then convert to Slint units.
 #[cfg(target_os = "windows")]
@@ -432,6 +722,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ui.set_loaded(false);
         ui.set_has_results(false);
         hide_rate_chart(&ui);
+        hide_violin_chart(&ui);
+        hide_spectrum_chart(&ui);
         ui.set_filename(
             path.file_name()
                 .unwrap_or_default()
@@ -790,24 +1082,44 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ui.set_results("Analysis in progress…".into());
             ui.set_warnings(gui_state::LIST_MODE_WARNINGS.into());
             hide_rate_chart(&ui);
+            hide_violin_chart(&ui);
             shared.borrow_mut().rate_chart = None;
+            shared.borrow_mut().violin_chart = None;
             let weak = ui.as_weak();
             let shared = shared.clone();
             let (sender, receiver) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
                 // The series are binned once, then feed both the written
                 // files (`list_mode_write`, as in `list_mode_run`) and the
-                // in-window chart, rendered here at its default size.
-                let (result, chart) = match gui_state::rate_series(&file, &params) {
+                // in-window charts, each rendered here at its default size.
+                let outcome = match gui_state::rate_series(&file, &params) {
                     Ok(series) => {
                         let written = gui_state::list_mode_write(&series, &params);
-                        let mut chart = chart::LineChart::rate_vs_time(&series);
-                        let image = chart.render();
-                        (written, Some((chart, image)))
+                        let mut rate_chart = chart::LineChart::rate_vs_time(&series);
+                        let rate_image = rate_chart.render();
+                        let violin_chart = if params.windows.is_empty() {
+                            None
+                        } else {
+                            let groups = gui_state::violin_series(&series, &params.windows);
+                            let mut violin_chart = chart::LineChart::violin(&groups);
+                            let violin_image = violin_chart.render();
+                            Some((violin_chart, violin_image))
+                        };
+                        ListAnalysisOutcome {
+                            output_dir: params.output_dir,
+                            written,
+                            rate_chart: Some((rate_chart, rate_image)),
+                            violin_chart,
+                        }
                     }
-                    Err(e) => (Err(e), None),
+                    Err(e) => ListAnalysisOutcome {
+                        output_dir: params.output_dir,
+                        written: Err(e),
+                        rate_chart: None,
+                        violin_chart: None,
+                    },
                 };
-                let _ = sender.send((params.output_dir, result, chart));
+                let _ = sender.send(outcome);
             });
             let timer = timer_analyze.clone();
             let timer_callback = Rc::downgrade(&timer);
@@ -815,7 +1127,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 slint::TimerMode::Repeated,
                 std::time::Duration::from_millis(50),
                 move || {
-                    let (dir, result, chart) = match receiver.try_recv() {
+                    let outcome = match receiver.try_recv() {
                         Ok(value) => value,
                         Err(std::sync::mpsc::TryRecvError::Empty) => return,
                         Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -840,9 +1152,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let Some(ui) = weak.upgrade() else {
                         return;
                     };
-                    // The chart shows the computed series even when writing
+                    let ListAnalysisOutcome {
+                        output_dir,
+                        written,
+                        rate_chart,
+                        violin_chart,
+                    } = outcome;
+                    // The charts show the computed series even when writing
                     // the files failed (e.g. an output already exists).
-                    let chart_error = match chart {
+                    let rate_chart_error = match rate_chart {
                         Some((chart, Ok(image))) => {
                             shared.borrow_mut().rate_chart = Some(chart);
                             ui.set_rate_chart(image.to_slint_image());
@@ -852,16 +1170,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some((_, Err(e))) => Some(e),
                         None => None,
                     };
-                    match result {
+                    let violin_chart_error = match violin_chart {
+                        Some((chart, Ok(image))) => {
+                            shared.borrow_mut().violin_chart = Some(chart);
+                            ui.set_violin_chart(image.to_slint_image());
+                            ui.set_violin_chart_ready(true);
+                            None
+                        }
+                        Some((_, Err(e))) => Some(e),
+                        None => None,
+                    };
+                    match written {
                         Ok(paths) => {
                             ui.set_results(joined(&paths).into());
                             ui.set_has_results(true);
-                            shared.borrow_mut().result_directory = Some(dir);
+                            shared.borrow_mut().result_directory = Some(output_dir);
                             let mut message =
                                 format!("Analysis complete · {} files generated.", paths.len());
-                            if let Some(e) = chart_error {
+                            if let Some(e) = rate_chart_error {
                                 message.push_str(&format!(
-                                    " The in-window chart could not be drawn: {e}"
+                                    " The in-window rate chart could not be drawn: {e}"
+                                ));
+                            }
+                            if let Some(e) = violin_chart_error {
+                                message.push_str(&format!(
+                                    " The in-window violin chart could not be drawn: {e}"
                                 ));
                             }
                             report(&ui, Ok(message));
@@ -891,10 +1224,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ui.set_has_results(false);
             ui.set_results("Analysis in progress…".into());
             ui.set_warnings("".into());
+            hide_spectrum_chart(&ui);
+            shared.borrow_mut().spectrum_chart = None;
             let weak = ui.as_weak();
+            let shared = shared.clone();
             let (sender, receiver) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
-                let result = gui_state::mpa_analyze(&file, selected_spectrum, &rois);
+                // The chart is rendered here, off the UI thread, at its
+                // default size (the chart area resizes/re-renders it once
+                // shown, like the rate-vs-time and violin charts).
+                let result = gui_state::mpa_analyze(&file, selected_spectrum, &rois).map(
+                    |analysis| {
+                        let mut chart = analysis.chart;
+                        let image = chart.render();
+                        MpaAnalysisOutcome {
+                            stats: analysis.stats,
+                            chart,
+                            image,
+                        }
+                    },
+                );
                 let _ = sender.send(result);
             });
             let timer = timer_analyze.clone();
@@ -926,17 +1275,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         return;
                     };
                     match result {
-                        Ok(analysis) => {
+                        Ok(outcome) => {
                             ui.set_results(
-                                gui_state::format_roi_statistics(&analysis.stats).into(),
+                                gui_state::format_roi_statistics(&outcome.stats).into(),
                             );
-                            let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
-                                &analysis.chart.rgb,
-                                analysis.chart.width,
-                                analysis.chart.height,
-                            );
-                            ui.set_spectrum_chart(slint::Image::from_rgb8(buffer));
-                            report(&ui, Ok("ROI statistics computed.".into()));
+                            let mut message = "ROI statistics computed.".to_string();
+                            match outcome.image {
+                                Ok(image) => {
+                                    shared.borrow_mut().spectrum_chart = Some(outcome.chart);
+                                    ui.set_spectrum_chart(image.to_slint_image());
+                                    ui.set_spectrum_chart_ready(true);
+                                }
+                                Err(e) => {
+                                    message.push_str(&format!(
+                                        " The in-window chart could not be drawn: {e}"
+                                    ));
+                                }
+                            }
+                            report(&ui, Ok(message));
                         }
                         Err(e) => {
                             ui.set_results("Analysis failed. See the message below.".into());
@@ -976,6 +1332,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     install_rate_chart(&ui, &state);
+    install_violin_chart(&ui, &state);
+    install_spectrum_chart(&ui, &state);
 
     let weak = ui.as_weak();
     ui.on_open_directory(move || {
@@ -1275,12 +1633,10 @@ mod tests {
             let analysis = gui_state::mpa_analyze(&shared_file, ui.get_spectrum(), &rois)
                 .expect("analysis succeeds");
             ui.set_results(gui_state::format_roi_statistics(&analysis.stats).into());
-            let buffer = slint::SharedPixelBuffer::<slint::Rgb8Pixel>::clone_from_slice(
-                &analysis.chart.rgb,
-                analysis.chart.width,
-                analysis.chart.height,
-            );
-            ui.set_spectrum_chart(slint::Image::from_rgb8(buffer));
+            let mut chart = analysis.chart;
+            let image = chart.render().expect("chart renders");
+            ui.set_spectrum_chart(image.to_slint_image());
+            ui.set_spectrum_chart_ready(true);
         });
 
         let placeholder = |text: &str| {

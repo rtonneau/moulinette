@@ -2,6 +2,7 @@
 //! list-mode (`.lst`) panel's validation and analysis orchestration over
 //! `lst`, `rate` and `plot`.
 use crate::{
+    chart,
     conversion::{self, Format, Selection},
     lst::{self, ListFile},
     mpa::{MpaFile, Record, SectionKind, Spectrum},
@@ -621,6 +622,35 @@ pub fn list_mode_write(
     Ok(generated)
 }
 
+/// Build one labeled rate-value group per ROI/time-window pair from
+/// `series` (as computed by `rate_series`) and `windows`: the data behind
+/// the in-window violin chart (`chart::LineChart::violin`, Ticket 7).
+/// Named `"{roi} {start}-{end}s"` so every ROI's windows are
+/// distinguishable in one shared chart, the way `rate_series`' ROI names
+/// distinguish `chart::LineChart::rate_vs_time`'s series. This filters
+/// each ROI's bins the same way `list_mode_write` does for its per-ROI
+/// violin PNGs, but is otherwise independent of it: `list_mode_write`'s
+/// own grouping (and the PNGs it writes via `plot::violin`) is untouched,
+/// so their byte output does not depend on this function existing.
+pub fn violin_series(
+    series: &[(String, Vec<RateBin>)],
+    windows: &[TimeWindow],
+) -> Vec<(String, Vec<f64>)> {
+    series
+        .iter()
+        .flat_map(|(name, bins)| {
+            windows.iter().map(move |w| {
+                let values: Vec<f64> = bins
+                    .iter()
+                    .filter(|b| b.time_s >= w.start_s && b.time_s < w.end_s)
+                    .map(|b| b.rate)
+                    .collect();
+                (format!("{name} {}-{}s", w.start_s, w.end_s), values)
+            })
+        })
+        .collect()
+}
+
 /// One ROI's peak statistics over an `.mpa` spectrum: moment statistics
 /// (weighted mean/standard-deviation) and a linear background between the
 /// ROI's two edge channels, per the approved grill design (no Gaussian/peak
@@ -786,26 +816,19 @@ pub fn roi_statistics(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<Vec<RoiSt
         .collect()
 }
 
-/// Raw RGB8 pixels of a rendered chart (row-major, 3 bytes per pixel),
-/// ready to wrap as a `slint::Image` via `SharedPixelBuffer::<Rgb8Pixel>`.
-pub struct MpaChart {
-    pub width: u32,
-    pub height: u32,
-    pub rgb: Vec<u8>,
-}
-
 /// Result of the `.mpa` Analyze-screen ROI run: per-ROI statistics (Ticket
-/// 4) and a static spectrum chart with each ROI's channel range shaded.
+/// 4) and an in-window spectrum chart (Ticket 6's `chart::LineChart`,
+/// Ticket 7) with each ROI's channel range shaded.
 pub struct MpaAnalysis {
     pub stats: Vec<RoiStatistics>,
-    pub chart: MpaChart,
+    pub chart: chart::LineChart,
 }
 
 /// Run the `.mpa` Analyze-screen ROI analysis: resolve `rois` against the
 /// spectrum selected by `selected_spectrum` (the "Spectra to convert"
 /// combo's convention: `0` means "All spectra", resolved here to the first
 /// spectrum since statistics need exactly one; `n` means `spectra[n - 1]`),
-/// then compute statistics and render the static spectrum chart.
+/// then compute statistics and build the in-window spectrum chart.
 pub fn mpa_analyze(
     file: &MpaFile,
     selected_spectrum: i32,
@@ -821,7 +844,7 @@ pub fn mpa_analyze(
         .get(index)
         .ok_or_else(|| "No spectra loaded".to_string())?;
     let stats = roi_statistics(spectrum, rois)?;
-    let chart = render_mpa_chart(spectrum, rois)?;
+    let chart = spectrum_chart(spectrum, rois)?;
     Ok(MpaAnalysis { stats, chart })
 }
 
@@ -843,65 +866,32 @@ pub fn format_roi_statistics(stats: &[RoiStatistics]) -> String {
         .join("\n")
 }
 
-/// Render `spectrum`'s channel counts with each of `rois`'s resolved
-/// channel range shown as a shaded band, as raw RGB8 pixels via
-/// `plotters`' `BitMapBackend::with_buffer`. A one-off static render for
-/// this panel; ticket 7 generalizes chart rendering into a shared
-/// interactive module. An ROI whose bounds cannot be resolved against this
-/// spectrum (e.g. missing calibration) is skipped rather than failing the
-/// whole chart, since `roi_statistics` already reports that error.
-fn render_mpa_chart(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<MpaChart, String> {
-    use plotters::prelude::*;
-    use plotters::style::Palette;
-
-    let (width, height) = (900u32, 500u32);
-    let n = spectrum.channels.len().max(1);
+/// Build the in-window spectrum-with-ROI-bands chart (Ticket 6's
+/// `chart::LineChart`) for `spectrum`: a single "Counts" series over its
+/// channel counts, plus one shaded `chart::Band` per resolvable ROI
+/// (colored by that ROI's position, like the previous static chart's
+/// `Palette99::pick(i)`). An ROI whose bounds cannot be resolved against
+/// this spectrum (e.g. missing calibration) is skipped rather than failing
+/// the whole chart, since `roi_statistics` already reports that error.
+fn spectrum_chart(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<chart::LineChart, String> {
     let counts: Vec<f64> = (0..spectrum.channels.len())
         .map(|i| channel_count(&spectrum.channels[i], i))
         .collect::<Result<_, _>>()?;
-    let y_max = counts.iter().cloned().fold(0.0f64, f64::max).max(1.0) * 1.1;
-
-    let mut rgb = vec![0u8; width as usize * height as usize * 3];
-    {
-        let root = BitMapBackend::with_buffer(&mut rgb, (width, height)).into_drawing_area();
-        root.fill(&WHITE).map_err(|e| e.to_string())?;
-        let mut chart = ChartBuilder::on(&root)
-            .caption("Spectrum with ROI bands", ("sans-serif", 20))
-            .margin(10)
-            .x_label_area_size(35)
-            .y_label_area_size(50)
-            .build_cartesian_2d(0f64..n as f64, 0f64..y_max)
-            .map_err(|e| e.to_string())?;
-        chart
-            .configure_mesh()
-            .x_desc("Channel")
-            .y_desc("Counts")
-            .draw()
-            .map_err(|e| e.to_string())?;
-
-        for (i, spec) in rois.iter().enumerate() {
-            if let Ok((start, end)) = roi_channel_bounds(spectrum, spec) {
-                let color = Palette99::pick(i).to_rgba();
-                chart
-                    .draw_series(std::iter::once(Rectangle::new(
-                        [(start as f64, 0.0), ((end + 1) as f64, y_max)],
-                        color.mix(0.25).filled(),
-                    )))
-                    .map_err(|e| e.to_string())?;
-            }
-        }
-
-        let points: Vec<(f64, f64)> = counts
-            .iter()
-            .enumerate()
-            .map(|(i, &c)| (i as f64, c))
-            .collect();
-        chart
-            .draw_series(LineSeries::new(points, &BLACK))
-            .map_err(|e| e.to_string())?;
-        root.present().map_err(|e| e.to_string())?;
-    }
-    Ok(MpaChart { width, height, rgb })
+    let bands = rois
+        .iter()
+        .enumerate()
+        .filter_map(|(i, spec)| {
+            let (start, end) = roi_channel_bounds(spectrum, spec).ok()?;
+            Some(chart::Band {
+                x: chart::AxisRange {
+                    min: start as f64,
+                    max: (end + 1) as f64,
+                },
+                color_index: i,
+            })
+        })
+        .collect();
+    Ok(chart::LineChart::spectrum_with_bands(&counts, bands))
 }
 
 #[cfg(test)]
@@ -1205,6 +1195,46 @@ mod tests {
                 .contains("no ADC2 header")
         );
         assert!(!dir.join("other").exists());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn violin_series_filters_each_roi_by_window_into_labeled_groups() {
+        let dir = temp_dir("violin-series");
+        let input = dir.join("fixture.lst");
+        fs::write(&input, synthetic_lst()).unwrap();
+        let file = load_list(&input).unwrap();
+        let params = list_mode_parameters(
+            &[
+                fields("peak", "1", "20", "35", 0),
+                fields("low", "1", "0", "15", 1),
+            ],
+            "1000",
+            &[("0", "1"), ("1", "2")],
+            dir.join("out").to_str().unwrap(),
+        )
+        .unwrap();
+        let series = rate_series(&file, &params).unwrap();
+        let groups = violin_series(&series, &params.windows);
+        assert_eq!(
+            groups
+                .iter()
+                .map(|(name, _)| name.clone())
+                .collect::<Vec<_>>(),
+            vec![
+                "peak 0-1s".to_string(),
+                "peak 1-2s".to_string(),
+                "low 0-1s".to_string(),
+                "low 1-2s".to_string(),
+            ]
+        );
+        // Matches the per-ROI rates `list_mode_run_writes_outputs_and_never_overwrites`
+        // pins via the written CSVs: peak's rate is 2 in [0,1) and 0 in
+        // [1,2); low's is 0 then 1.
+        assert_eq!(groups[0].1, vec![2.0]);
+        assert_eq!(groups[1].1, vec![0.0]);
+        assert_eq!(groups[2].1, vec![0.0]);
+        assert_eq!(groups[3].1, vec![1.0]);
         fs::remove_dir_all(dir).unwrap();
     }
 

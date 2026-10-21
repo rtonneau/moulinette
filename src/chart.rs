@@ -13,6 +13,7 @@ use std::ops::Range;
 use plotters::prelude::*;
 use plotters::style::Palette;
 
+use crate::kde::gaussian_kde;
 use crate::rate::RateBin;
 
 /// Buffer size used before the displaying element reports its own size.
@@ -234,6 +235,17 @@ impl RgbImage {
     }
 }
 
+/// A shaded vertical band drawn behind the series (e.g. one ROI's
+/// resolved channel or energy range), spanning the full visible y-range
+/// at render time so it stays visible through zoom and pan, the way
+/// `gui_state`'s spectrum-with-ROI-bands view needs its bands to.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Band {
+    pub x: AxisRange,
+    /// `Palette99` index used for the band's fill color.
+    pub color_index: usize,
+}
+
 /// The data point nearest to a hovered pixel.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Hover<'a> {
@@ -250,6 +262,8 @@ pub struct LineChart {
     x_desc: String,
     y_desc: String,
     series: Vec<(String, Vec<(f64, f64)>)>,
+    /// Shaded bands drawn behind the series, e.g. one per ROI.
+    bands: Vec<Band>,
     home: ViewRange,
     view: ViewRange,
     size: (u32, u32),
@@ -273,11 +287,105 @@ impl LineChart {
             x_desc: x_desc.into(),
             y_desc: y_desc.into(),
             series,
+            bands: Vec::new(),
             home,
             view: home,
             size: DEFAULT_SIZE,
             area: None,
         }
+    }
+
+    /// Attach shaded bands (e.g. one per ROI) drawn behind the series.
+    pub fn with_bands(mut self, bands: Vec<Band>) -> LineChart {
+        self.bands = bands;
+        self
+    }
+
+    /// The in-window counterpart of the `.mpa` Analyze screen's static
+    /// spectrum-with-ROI-bands placeholder (Ticket 5): a single "Counts"
+    /// series over the spectrum's channel indices, plus one `Band` per ROI
+    /// so each stays shaded through pan/zoom instead of only at the home
+    /// view.
+    pub fn spectrum_with_bands(counts: &[f64], bands: Vec<Band>) -> LineChart {
+        let n = counts.len().max(1);
+        let y_max = (counts.iter().cloned().fold(0.0f64, f64::max) * 1.1).max(1.0);
+        let points: Vec<(f64, f64)> = counts.iter().enumerate().map(|(i, &c)| (i as f64, c)).collect();
+        LineChart::new(
+            "Spectrum with ROI bands",
+            "Channel",
+            "Counts",
+            vec![("Counts".to_string(), points)],
+            ViewRange {
+                x: AxisRange {
+                    min: 0.0,
+                    max: n as f64,
+                },
+                y: AxisRange {
+                    min: 0.0,
+                    max: y_max,
+                },
+            },
+        )
+        .with_bands(bands)
+    }
+
+    /// The in-window counterpart of `plot::violin`'s per-group shapes: one
+    /// Gaussian-KDE density curve per named group (e.g. one per ROI/time-
+    /// window pair), density plotted against the shared value domain, so
+    /// it reuses `LineChart`'s zoom/pan/hover exactly like `rate_vs_time`
+    /// does rather than drawing a mirrored violin polygon. The mirrored
+    /// polygon shape itself stays in `plot::violin`'s PNG output, which
+    /// this never touches.
+    pub fn violin(groups: &[(String, Vec<f64>)]) -> LineChart {
+        let all_values: Vec<f64> = groups.iter().flat_map(|(_, v)| v.iter().copied()).collect();
+        let (mut y_min, mut y_max) = if all_values.is_empty() {
+            (0.0, 1.0)
+        } else {
+            (
+                all_values.iter().cloned().fold(f64::INFINITY, f64::min),
+                all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+            )
+        };
+        if y_max <= y_min {
+            y_min -= 1.0;
+            y_max += 1.0;
+        }
+        let span = y_max - y_min;
+        let steps = 200usize;
+        let eval_points: Vec<f64> = (0..=steps)
+            .map(|i| y_min + span * (i as f64) / (steps as f64))
+            .collect();
+
+        let mut series = Vec::with_capacity(groups.len());
+        let mut density_max = 0.0f64;
+        for (name, values) in groups {
+            let densities = gaussian_kde(values, &eval_points);
+            density_max = density_max.max(densities.iter().cloned().fold(0.0, f64::max));
+            series.push((
+                name.clone(),
+                eval_points
+                    .iter()
+                    .zip(&densities)
+                    .map(|(&v, &d)| (v, d))
+                    .collect(),
+            ));
+        }
+        LineChart::new(
+            "Rate distribution per window",
+            "Rate [Yield/s]",
+            "Density",
+            series,
+            ViewRange {
+                x: AxisRange {
+                    min: y_min,
+                    max: y_max,
+                },
+                y: AxisRange {
+                    min: 0.0,
+                    max: (density_max * 1.1).max(1e-9),
+                },
+            },
+        )
     }
 
     /// The in-window counterpart of `plot::rate_vs_time`: the same series,
@@ -445,6 +553,20 @@ impl LineChart {
                 .y_desc(self.y_desc.as_str())
                 .draw()
                 .map_err(|e| e.to_string())?;
+            for band in &self.bands {
+                if band.x.max <= view.x.min || band.x.min >= view.x.max {
+                    continue;
+                }
+                let lo = band.x.min.max(view.x.min);
+                let hi = band.x.max.min(view.x.max);
+                let color = Palette99::pick(band.color_index).to_rgba();
+                chart
+                    .draw_series(std::iter::once(Rectangle::new(
+                        [(lo, view.y.min), (hi, view.y.max)],
+                        color.mix(0.25).filled(),
+                    )))
+                    .map_err(|e| e.to_string())?;
+            }
             for (i, (name, points)) in self.series.iter().enumerate() {
                 let color = Palette99::pick(i).to_rgba();
                 chart
@@ -694,5 +816,123 @@ mod tests {
         }
         assert!(visible_runs(&[(20.0, 1.0), (30.0, 1.0)], &view).is_empty());
         assert!(visible_runs(&[(1.0, 1.0)], &view).is_empty());
+    }
+
+    #[test]
+    fn spectrum_chart_hover_shows_channel_and_count() {
+        let mut chart = LineChart::spectrum_with_bands(&[2.0, 9.0, 3.0], Vec::new());
+        assert_eq!(chart.view(), view((0.0, 3.0), (0.0, 9.9)));
+        chart.render().unwrap();
+        let area = chart.area().unwrap();
+        let peak = data_to_pixel(&chart.view(), &area, (1.0, 9.0));
+        let hover = chart.nearest(peak).unwrap();
+        assert_eq!((hover.series, hover.x, hover.y), ("Counts", 1.0, 9.0));
+        let tooltip = chart.tooltip(&hover);
+        assert!(tooltip.contains("Channel: 1"), "{tooltip}");
+        assert!(tooltip.contains("Counts: 9"), "{tooltip}");
+    }
+
+    #[test]
+    fn spectrum_chart_band_shades_its_channel_range_through_zoom() {
+        // All-zero counts so the only non-white pixels come from the band.
+        let bands = vec![Band {
+            x: AxisRange { min: 3.0, max: 6.0 },
+            color_index: 0,
+        }];
+        let mut chart = LineChart::spectrum_with_bands(&[0.0; 10], bands.clone());
+        assert_eq!(chart.bands, bands, "bands are stored, not just drawn once");
+
+        let pixel_at = |image: &RgbImage, (px, py): (f64, f64)| {
+            let (x, y) = (px.round() as usize, py.round() as usize);
+            let i = (y * image.width as usize + x) * 3;
+            (image.rgb[i], image.rgb[i + 1], image.rgb[i + 2])
+        };
+        let image = chart.render().unwrap();
+        let area = chart.area().unwrap();
+        let mid_y = (chart.view().y.min + chart.view().y.max) / 2.0;
+        let inside = data_to_pixel(&chart.view(), &area, (4.5, mid_y));
+        assert_ne!(
+            pixel_at(&image, inside),
+            (255, 255, 255),
+            "the band tints the area behind the flat (all-zero) line"
+        );
+
+        // The band stays visible (still tinted, now at the zoomed-in pixel
+        // position) after zooming in on a point inside it.
+        chart.zoom(inside, 0.5);
+        let image = chart.render().unwrap();
+        let area = chart.area().unwrap();
+        let mid_y = (chart.view().y.min + chart.view().y.max) / 2.0;
+        let inside = data_to_pixel(&chart.view(), &area, (4.5, mid_y));
+        assert_ne!(
+            pixel_at(&image, inside),
+            (255, 255, 255),
+            "the band is still shaded after zooming"
+        );
+    }
+
+    #[test]
+    fn violin_chart_hover_shows_group_label_and_density() {
+        let groups = vec![
+            ("0-10".to_string(), vec![1.0, 2.0, 2.0, 3.0]),
+            ("10-20".to_string(), vec![4.0, 5.0, 5.0, 6.0]),
+        ];
+        let mut chart = LineChart::violin(&groups);
+        assert_eq!(chart.view().x, AxisRange { min: 1.0, max: 6.0 });
+        chart.render().unwrap();
+        let area = chart.area().unwrap();
+        // Land exactly on one point of "0-10"'s own density curve (the
+        // shared eval domain's left edge, x = 1.0) so the nearest match is
+        // unambiguous: "10-20"'s density there is near zero, far from this
+        // exact value, while "0-10"'s point is an exact (distance-zero) hit.
+        let expected_density = gaussian_kde(&groups[0].1, &[1.0])[0];
+        let target = data_to_pixel(&chart.view(), &area, (1.0, expected_density));
+        let hover = chart.nearest(target).unwrap();
+        assert_eq!(hover.series, "0-10");
+        assert!((hover.x - 1.0).abs() < 1e-9);
+        assert!((hover.y - expected_density).abs() < 1e-9);
+        let tooltip = chart.tooltip(&hover);
+        assert!(tooltip.contains("0-10"), "{tooltip}");
+        assert!(tooltip.contains("Density:"), "{tooltip}");
+    }
+
+    #[test]
+    fn spectrum_and_violin_charts_reuse_the_same_line_chart_pan_zoom_hover() {
+        // Both in-window views (Ticket 7) are built from `LineChart`
+        // (Ticket 6) rather than each reimplementing pan/zoom/hover: a
+        // shared helper exercises the same sequence of calls on each and
+        // checks they respond identically, since there is only one
+        // implementation of `zoom`/`pan`/`reset`/`nearest` for both to call.
+        fn exercise(chart: &mut LineChart) {
+            chart.render().unwrap();
+            let area = chart.area().unwrap();
+            let home = chart.view();
+            let cursor = (
+                area.left + 0.3 * (area.right - area.left),
+                area.top + 0.3 * (area.bottom - area.top),
+            );
+            chart.zoom(cursor, 0.5);
+            assert_ne!(chart.view(), home, "zoom narrows the shared view state");
+            chart.render().unwrap();
+            chart.pan(cursor, (cursor.0 + 5.0, cursor.1 + 5.0));
+            chart.render().unwrap();
+            assert!(chart.area().is_some(), "render always records the plot area");
+            chart.reset();
+            assert_eq!(chart.view(), home, "reset returns to the home view");
+        }
+
+        let mut spectrum = LineChart::spectrum_with_bands(
+            &[1.0, 5.0, 9.0, 4.0, 1.0],
+            vec![Band {
+                x: AxisRange { min: 1.0, max: 3.0 },
+                color_index: 0,
+            }],
+        );
+        let mut violin = LineChart::violin(&[
+            ("w1".to_string(), vec![1.0, 2.0, 2.0, 3.0]),
+            ("w2".to_string(), vec![4.0, 5.0, 5.0, 6.0]),
+        ]);
+        exercise(&mut spectrum);
+        exercise(&mut violin);
     }
 }

@@ -1,6 +1,68 @@
 import { Button, ComboBox, LineEdit, CheckBox, TextEdit, Spinner, Palette, ScrollView } from "std-widgets.slint";
 import { Panel } from "components/panel.slint";
 
+// One interactive `chart::LineChart`-backed view: a `TouchArea` reporting
+// resize/scroll/pointer events through `resized`/`zoom`/`pan`/`hover`,
+// showing `chart-image` plus a hover marker and tooltip near the cursor,
+// shared by the rate-vs-time, spectrum-with-ROI-bands and violin
+// (time-window density) charts, which otherwise only differ in which
+// Rust-side `chart::LineChart` backs them.
+component InteractiveChart inherits TouchArea {
+    in property <image> chart-image;
+    in property <string> chart-tooltip;
+    in property <float> marker-x;
+    in property <float> marker-y;
+    callback resized(float, float);
+    // x, y, wheel delta-y, width, height.
+    callback zoom(float, float, float, float, float);
+    // from-x, from-y, to-x, to-y, width, height.
+    callback pan(float, float, float, float, float, float);
+    // x, y, width, height.
+    callback hover(float, float, float, float);
+    height: 380px;
+    accessible-role: image;
+    mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.crosshair;
+    property <length> drag-x;
+    property <length> drag-y;
+    init => { self.resized(self.width / 1px, self.height / 1px); }
+    changed width => { self.resized(self.width / 1px, self.height / 1px); }
+    changed height => { self.resized(self.width / 1px, self.height / 1px); }
+    scroll-event(event) => {
+        self.zoom(self.mouse-x / 1px, self.mouse-y / 1px, event.delta-y / 1px, self.width / 1px, self.height / 1px);
+        accept
+    }
+    pointer-event(event) => {
+        if event.kind == PointerEventKind.down && event.button == PointerEventButton.left {
+            self.drag-x = self.mouse-x;
+            self.drag-y = self.mouse-y;
+        } else if event.kind == PointerEventKind.move {
+            if self.pressed {
+                self.pan(self.drag-x / 1px, self.drag-y / 1px, self.mouse-x / 1px, self.mouse-y / 1px, self.width / 1px, self.height / 1px);
+                self.drag-x = self.mouse-x;
+                self.drag-y = self.mouse-y;
+            } else {
+                self.hover(self.mouse-x / 1px, self.mouse-y / 1px, self.width / 1px, self.height / 1px);
+            }
+        }
+    }
+    Image { x: 0; y: 0; width: parent.width; height: parent.height; source: root.chart-image; image-fit: fill; }
+    if root.has-hover && !root.pressed && root.chart-tooltip != "": Rectangle {
+        x: root.marker-x * 1px - 5px;
+        y: root.marker-y * 1px - 5px;
+        width: 10px; height: 10px; border-radius: 5px;
+        border-width: 2px; border-color: #17243b;
+    }
+    if root.has-hover && !root.pressed && root.chart-tooltip != "": Rectangle {
+        // Near the cursor, flipped left/up when it would leave the chart.
+        x: root.mouse-x + 14px + self.width > root.width ? max(0px, root.mouse-x - 8px - self.width) : root.mouse-x + 14px;
+        y: root.mouse-y + 18px + self.height > root.height ? max(0px, root.mouse-y - 8px - self.height) : root.mouse-y + 18px;
+        width: tooltip.preferred-width + 12px;
+        height: tooltip.preferred-height + 8px;
+        background: #ffffffee; border-width: 1px; border-color: #17243b; border-radius: 4px;
+        tooltip := Text { x: 6px; y: 4px; text: root.chart-tooltip; color: #17243b; font-size: 12px; }
+    }
+}
+
 // One editable ROI row of the list-mode panel; `unit` indexes `roi-units`.
 export struct RoiRow {
     name: string,
@@ -50,10 +112,24 @@ export component MainWindow inherits Window {
     // panel variant renders is still decided by `list-mode` alone, since a
     // loaded file's extension does not change when the screen changes.
     in-out property <int> screen: 0;
-    // Static (pre-interactive; Ticket 7 upgrades this) spectrum chart for
-    // the `.mpa` Analyze panel, with each configured ROI's channel range
-    // shown as a shaded band.
+    // Interactive spectrum-with-ROI-bands chart for the `.mpa` Analyze
+    // panel (Ticket 7 upgrade of Ticket 5's static placeholder), rendered
+    // by `chart::LineChart` (Rust) at the chart area's size, exactly like
+    // `rate-chart` below: the callbacks report cursor positions in the
+    // chart area's own logical coordinates plus its current width/height;
+    // Rust maps them to buffer pixels, updates the view range and
+    // re-renders `spectrum-chart`. ROI bands are redrawn clipped to the
+    // current view on every render, so they stay shaded through pan/zoom.
     in property <image> spectrum-chart;
+    in property <bool> spectrum-chart-ready;
+    in property <string> spectrum-chart-tooltip;
+    in property <float> spectrum-chart-marker-x;
+    in property <float> spectrum-chart-marker-y;
+    callback spectrum-chart-resized(float, float);
+    callback spectrum-chart-zoom(float, float, float, float, float);
+    callback spectrum-chart-pan(float, float, float, float, float, float);
+    callback spectrum-chart-hover(float, float, float, float);
+    callback spectrum-chart-reset();
     // Interactive rate-vs-time chart of the last `.lst` analysis run,
     // rendered by `chart::LineChart` (Rust) at the chart area's size. The
     // callbacks report cursor positions in the chart area's own logical
@@ -74,6 +150,20 @@ export component MainWindow inherits Window {
     // x, y, width, height.
     callback rate-chart-hover(float, float, float, float);
     callback rate-chart-reset();
+    // Interactive per-ROI/time-window density ("violin") chart of the
+    // last `.lst` analysis run (shown only once at least one time window
+    // is configured and the run has completed), same wiring as
+    // `rate-chart` above.
+    in property <image> violin-chart;
+    in property <bool> violin-chart-ready;
+    in property <string> violin-chart-tooltip;
+    in property <float> violin-chart-marker-x;
+    in property <float> violin-chart-marker-y;
+    callback violin-chart-resized(float, float);
+    callback violin-chart-zoom(float, float, float, float, float);
+    callback violin-chart-pan(float, float, float, float, float, float);
+    callback violin-chart-hover(float, float, float, float);
+    callback violin-chart-reset();
     callback go-home();
     callback pick-convert();
     callback pick-analyze();
@@ -263,6 +353,33 @@ export component MainWindow inherits Window {
                 }
             }
         }
+        // In-window view of the last list-mode run's per-ROI/time-window
+        // density ("violin") groups, shown once at least one time window
+        // is configured and the run has completed; the per-ROI violin PNG
+        // files (`plot::violin`, written by `list_mode_write`) are
+        // unaffected by zooming/panning this view.
+        if root.screen != 0 && root.list-mode && root.violin-chart-ready: Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                HorizontalLayout {
+                    Text { text: "Rate distribution per time window"; color: root.ink; font-size: 18px; font-weight: 600; vertical-alignment: center; }
+                    Button { text: "Reset view"; clicked => { root.violin-chart-reset(); } }
+                }
+                Text { text: "One density curve per ROI/time-window pair. Scroll to zoom around the cursor, drag to pan, hover for a window's exact density."; color: root.muted; wrap: word-wrap; font-size: 12px; }
+                InteractiveChart {
+                    accessible-label: "Rate distribution per time window chart";
+                    chart-image: root.violin-chart;
+                    chart-tooltip: root.violin-chart-tooltip;
+                    marker-x: root.violin-chart-marker-x;
+                    marker-y: root.violin-chart-marker-y;
+                    resized(w, h) => { root.violin-chart-resized(w, h); }
+                    zoom(x, y, delta, w, h) => { root.violin-chart-zoom(x, y, delta, w, h); }
+                    pan(fx, fy, tx, ty, w, h) => { root.violin-chart-pan(fx, fy, tx, ty, w, h); }
+                    hover(x, y, w, h) => { root.violin-chart-hover(x, y, w, h); }
+                }
+            }
+        }
         // Shown on Convert always, and on Analyze until a file is loaded
         // (there is nothing better to show yet); once a `.mpa` file loads
         // on Analyze, the ROI/chart panel below takes over.
@@ -310,10 +427,12 @@ export component MainWindow inherits Window {
         }
         // `.mpa` measurement opened on the Analyze screen: an ROI editor
         // (the same row markup as the list-mode panel's, minus the
-        // time-window section, which is `.lst`-only) plus a static
-        // `plotters` spectrum chart shaded with each ROI's channel range.
-        // Statistics (Ticket 4) are reported in the shared Results panel
-        // below, like conversion/list-mode outputs.
+        // time-window section, which is `.lst`-only) plus an interactive
+        // `chart::LineChart` spectrum chart shaded with each ROI's channel
+        // range (Ticket 7 upgrade of Ticket 5's static placeholder; ROI
+        // bands stay shaded through pan/zoom). Statistics (Ticket 4) are
+        // reported in the shared Results panel below, like conversion/
+        // list-mode outputs.
         if root.screen == 2 && root.loaded && !root.list-mode: Panel {
             dark: root.dark;
             VerticalLayout {
@@ -335,7 +454,24 @@ export component MainWindow inherits Window {
                     Button { text: "Add ROI"; enabled: !root.busy; clicked => { root.add-roi(); } }
                 }
                 Text { text: "Spectrum chart"; color: root.muted; }
-                Image { source: root.spectrum-chart; height: 320px; image-fit: contain; }
+                if root.spectrum-chart-ready: VerticalLayout {
+                    spacing: 4px;
+                    HorizontalLayout {
+                        Text { text: "Scroll to zoom around the cursor, drag to pan, hover for a channel's exact count."; color: root.muted; wrap: word-wrap; font-size: 12px; horizontal-stretch: 1; }
+                        Button { text: "Reset view"; clicked => { root.spectrum-chart-reset(); } }
+                    }
+                    InteractiveChart {
+                        accessible-label: "Spectrum chart";
+                        chart-image: root.spectrum-chart;
+                        chart-tooltip: root.spectrum-chart-tooltip;
+                        marker-x: root.spectrum-chart-marker-x;
+                        marker-y: root.spectrum-chart-marker-y;
+                        resized(w, h) => { root.spectrum-chart-resized(w, h); }
+                        zoom(x, y, delta, w, h) => { root.spectrum-chart-zoom(x, y, delta, w, h); }
+                        pan(fx, fy, tx, ty, w, h) => { root.spectrum-chart-pan(fx, fy, tx, ty, w, h); }
+                        hover(x, y, w, h) => { root.spectrum-chart-hover(x, y, w, h); }
+                    }
+                }
             }
         }
         if root.screen != 0: Panel {
