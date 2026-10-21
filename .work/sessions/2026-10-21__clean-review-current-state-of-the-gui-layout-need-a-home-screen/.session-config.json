@@ -139,6 +139,30 @@
         "ticket": "03-wire-lst-convert",
         "commit": "ebd058f"
       }
+    },
+    {
+      "at": "2026-10-21T10:59:03.578Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/04-mpa-roi-statistics.md",
+        "03-implement/04-mpa-roi-statistics/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-mpa-roi-statistics"
+      }
+    },
+    {
+      "at": "2026-10-21T11:08:02.365Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/04-mpa-roi-statistics/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "04-mpa-roi-statistics",
+        "commit": "7f976fb"
+      }
     }
   ],
   "current_phase": "ship",
