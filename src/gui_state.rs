@@ -93,7 +93,7 @@ pub fn histogram_list_file(file: &ListFile) -> Vec<Spectrum> {
         .collect()
 }
 
-pub const MODES: [(Format, &str, &str); 8] = [
+pub const MODES: [(Format, &str, &str); 9] = [
     (
         Format::Xy,
         "XY · Channel / counts",
@@ -133,6 +133,11 @@ pub const MODES: [(Format, &str, &str); 8] = [
         Format::EightColumn,
         "8CO · Eight-column counts",
         "Eight fixed-width fields per row. Selection must contain a multiple of eight channels.",
+    ),
+    (
+        Format::ChargeNormalized,
+        "Charge-normalized (µC)",
+        "Divides each channel by a chosen monitor ADC/spectrum's total counts; optionally scaled to counts-per-µC. A moulinette-specific approximation (ADR 0002), not legacy-tool behavior.",
     ),
 ];
 
@@ -239,6 +244,9 @@ pub fn warnings(format: Format) -> &'static str {
         }
         Format::EightColumn => {
             "8CO count fields are limited to 10 bytes; longer count text is truncated."
+        }
+        Format::ChargeNormalized => {
+            "Monitor-ADC counts stand in for integrated beam charge (ADR 0002); this is a moulinette-specific approximation, not legacy-tool behavior. Leave counts-per-µC blank for a dimensionless ratio."
         }
         _ => {
             "Count text is limited to the legacy first 20 bytes. Output uses legacy filenames and CRLF line endings."
@@ -894,6 +902,91 @@ fn spectrum_chart(spectrum: &Spectrum, rois: &[RoiSpec]) -> Result<chart::LineCh
     Ok(chart::LineChart::spectrum_with_bands(&counts, bands))
 }
 
+/// Charge-normalization calibration chosen on the Convert screen's "Charge
+/// normalization" section: the monitor ADC/spectrum whose own total counts
+/// over the run stand in for integrated beam charge (ADR 0002), and an
+/// optional counts-per-µC value scaling the dimensionless monitor-count
+/// ratio into counts-per-µC. `monitor_adc` is descriptive (the monitor
+/// spectrum's own `Spectrum::adc_index`); callers resolve the actual
+/// `Spectrum` to pass to `charge_normalized` themselves.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ChargeCalibration {
+    pub monitor_adc: u8,
+    pub counts_per_uc: Option<f64>,
+}
+
+/// Validate the Convert screen's optional "Counts per µC" text field.
+/// Blank means `counts_per_uc: None` (the output stays a dimensionless
+/// ratio against the monitor's raw counts); otherwise the text must parse
+/// as a finite, positive `f64`.
+pub fn charge_calibration(
+    monitor_adc: u8,
+    counts_per_uc: &str,
+) -> Result<ChargeCalibration, String> {
+    let text = counts_per_uc.trim();
+    let counts_per_uc = if text.is_empty() {
+        None
+    } else {
+        let value: f64 = text
+            .parse()
+            .map_err(|_| "Counts per µC must be a positive number, or blank".to_string())?;
+        if !(value.is_finite() && value > 0.0) {
+            return Err("Counts per µC must be a positive number, or blank".into());
+        }
+        Some(value)
+    };
+    Ok(ChargeCalibration {
+        monitor_adc,
+        counts_per_uc,
+    })
+}
+
+/// Write the charge-normalized format: each of `spectrum`'s selected
+/// channels divided by `monitor`'s total counts over the run (the whole
+/// spectrum, independent of `selection`), optionally scaled to
+/// counts-per-µC by `calibration.counts_per_uc` (ADR 0002). Returns
+/// `ConversionError::MonitorNoCounts` rather than dividing by zero when the
+/// monitor spectrum accumulated no counts.
+///
+/// This does not go through `conversion::convert`: `Format::ChargeNormalized`
+/// needs a second spectrum (the monitor) that `convert`'s one-spectrum
+/// signature has no room for, so the Convert screen calls this function
+/// directly instead of `workflow::render`'s per-spectrum `convert` loop.
+pub fn charge_normalized(
+    spectrum: &Spectrum,
+    selection: Selection,
+    monitor: &Spectrum,
+    calibration: ChargeCalibration,
+) -> Result<Vec<u8>, conversion::ConversionError> {
+    let monitor_total = monitor
+        .channels
+        .iter()
+        .enumerate()
+        .try_fold(0.0_f64, |sum, (i, record)| {
+            channel_count(record, i)
+                .map(|value| sum + value)
+                .map_err(conversion::ConversionError::InvalidCount)
+        })?;
+    if monitor_total == 0.0 {
+        return Err(conversion::ConversionError::MonitorNoCounts);
+    }
+    let (start, end) = conversion::bounds(spectrum, selection)?;
+    let mut out = Vec::new();
+    for index in start..=end {
+        let count = channel_count(&spectrum.channels[index], index)
+            .map_err(conversion::ConversionError::InvalidCount)?;
+        let mut value = count / monitor_total;
+        if let Some(counts_per_uc) = calibration.counts_per_uc {
+            value *= counts_per_uc;
+        }
+        out.extend_from_slice(format!("{index:>8}").as_bytes());
+        out.extend_from_slice(b"     ");
+        out.extend_from_slice(format!("{value:.6}").as_bytes());
+        out.extend_from_slice(b"\r\n");
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1445,5 +1538,62 @@ mod tests {
         let out_of_range = channel_roi("peak", 0.0, 10.0);
         let error = roi_statistics(&spectrum, &[out_of_range]).unwrap_err();
         assert!(error.contains("out of bounds"), "{error}");
+    }
+
+    #[test]
+    fn charge_normalized_dimensionless_ratio_without_calibration() {
+        let spectrum = mpa_spectrum(&[10.0, 20.0, 30.0], &[]);
+        let monitor = mpa_spectrum(&[2.0, 2.0, 2.0], &[]);
+        let calibration = ChargeCalibration {
+            monitor_adc: monitor.adc_index as u8,
+            counts_per_uc: None,
+        };
+        let bytes = charge_normalized(&spectrum, Selection::default(), &monitor, calibration)
+            .unwrap();
+        let text = String::from_utf8(bytes).unwrap();
+        let monitor_total = 6.0; // 2.0 + 2.0 + 2.0
+        let expected: String = [10.0_f64, 20.0, 30.0]
+            .iter()
+            .enumerate()
+            .map(|(i, count)| format!("{i:>8}     {:.6}\r\n", count / monitor_total))
+            .collect();
+        assert_eq!(text, expected);
+    }
+
+    #[test]
+    fn charge_normalized_scales_to_counts_per_uc_when_calibrated() {
+        let spectrum = mpa_spectrum(&[10.0, 20.0, 30.0], &[]);
+        let monitor = mpa_spectrum(&[2.0, 2.0, 2.0], &[]);
+        let calibration = ChargeCalibration {
+            monitor_adc: monitor.adc_index as u8,
+            counts_per_uc: Some(2.0),
+        };
+        let bytes = charge_normalized(&spectrum, Selection::default(), &monitor, calibration)
+            .unwrap();
+        let text = String::from_utf8(bytes).unwrap();
+        let monitor_total = 6.0; // 2.0 + 2.0 + 2.0
+        let expected: String = [10.0_f64, 20.0, 30.0]
+            .iter()
+            .enumerate()
+            .map(|(i, count)| format!("{i:>8}     {:.6}\r\n", count / monitor_total * 2.0))
+            .collect();
+        assert_eq!(text, expected);
+        // Calibrated output must differ from the uncalibrated ratio, not
+        // just coincidentally match it.
+        assert!(!text.contains("1.666667"));
+    }
+
+    #[test]
+    fn charge_normalized_reports_structured_error_for_zero_count_monitor() {
+        let spectrum = mpa_spectrum(&[10.0, 20.0, 30.0], &[]);
+        let monitor = mpa_spectrum(&[0.0, 0.0, 0.0], &[]);
+        let calibration = ChargeCalibration {
+            monitor_adc: monitor.adc_index as u8,
+            counts_per_uc: None,
+        };
+        let error = charge_normalized(&spectrum, Selection::default(), &monitor, calibration)
+            .unwrap_err();
+        assert_eq!(error, conversion::ConversionError::MonitorNoCounts);
+        assert_eq!(error.to_string(), "monitor ADC recorded no counts");
     }
 }

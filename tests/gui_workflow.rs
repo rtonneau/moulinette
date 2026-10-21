@@ -130,14 +130,22 @@ fn mode_mapping_and_validation() {
             selection.end,
             if format == Format::Tof { None } else { Some(7) }
         );
-        assert!(format.unsupported_reason().is_none());
+        // `ChargeNormalized` (ticket 08) is deliberately the one MODES
+        // entry that reports unsupported through the generic one-spectrum
+        // `convert` path: it needs a second, user-chosen monitor spectrum
+        // that path has no room for. The Convert screen calls
+        // `gui_state::charge_normalized` directly for it instead of
+        // `workflow::render`'s `convert` loop.
+        assert!(format.unsupported_reason().is_none() || format == Format::ChargeNormalized);
     }
     assert_eq!(
         gui_state::parameters(0, 0, "0", "", 3).unwrap().2,
         vec![0, 1, 2]
     );
     for (mode, spectrum, start, end, count) in [
-        (8, 0, "0", "", 1),
+        // MODES now has 9 entries (0..=8, ticket 08's `ChargeNormalized`
+        // appended as the 9th); 9 is the first out-of-range index.
+        (9, 0, "0", "", 1),
         (-1, 0, "0", "", 1),
         (0, 2, "0", "", 1),
         (0, -1, "0", "", 1),

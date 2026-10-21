@@ -97,6 +97,14 @@ export component MainWindow inherits Window {
     in-out property <int> spectrum;
     in-out property <string> first-channel: "0";
     in-out property <string> last-channel;
+    // Charge normalization (ticket 08): one entry per loaded spectrum,
+    // used to pick the monitor ADC/spectrum whose own total counts stand
+    // in for integrated beam charge (ADR 0002). Shown only when `mode`
+    // selects the "Charge-normalized (µC)" entry of `formats`
+    // (`gui_state::MODES`'s 9th/last entry, index 8).
+    in property <[string]> monitor-adcs;
+    in-out property <int> monitor-adc;
+    in-out property <string> counts-per-uc;
     in property <string> description;
     in property <string> inspection;
     in property <string> preview;
@@ -413,6 +421,20 @@ export component MainWindow inherits Window {
                             Text { text: "Last channel (inclusive)"; color: root.muted; }
                             LineEdit { text <=> root.last-channel; placeholder-text: "Final channel"; enabled: !root.busy; }
                         }
+                    }
+                    // Charge normalization (ticket 08): collapsed unless
+                    // "Charge-normalized (µC)" is the selected output
+                    // format (`gui_state::MODES` index 8). Divides each
+                    // channel by the chosen monitor ADC/spectrum's total
+                    // counts over the run; counts-per-µC is optional and,
+                    // left blank, keeps the output a dimensionless ratio.
+                    if root.mode == 8: VerticalLayout {
+                        spacing: 8px;
+                        Text { text: "Charge normalization"; color: root.ink; font-size: 15px; font-weight: 600; }
+                        Text { text: "Monitor ADC/spectrum"; color: root.muted; }
+                        ComboBox { model: root.monitor-adcs; current-index <=> root.monitor-adc; enabled: root.loaded && !root.busy; selected => { root.settings-changed(); } }
+                        Text { text: "Counts per µC (optional)"; color: root.muted; }
+                        LineEdit { text <=> root.counts-per-uc; placeholder-text: "Leave blank for a dimensionless ratio"; enabled: !root.busy; edited => { root.settings-changed(); } }
                     }
                     Text { text: "Output directory"; color: root.muted; }
                     HorizontalLayout {

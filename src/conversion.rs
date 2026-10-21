@@ -18,9 +18,19 @@ pub enum Format {
     Rbs,
     Nra,
     Erd,
+    /// Ratio of each channel's counts to a user-chosen monitor ADC/
+    /// spectrum's total counts over the run (ADR 0002's integrated-charge
+    /// proxy), optionally scaled to counts-per-µC. This needs a second
+    /// spectrum (the monitor) alongside the one `convert` receives, so it
+    /// is registered here (name/legacy filename/CLI `formats` listing)
+    /// but reported unsupported through the generic one-spectrum
+    /// `convert` path; the real computation is
+    /// `gui_state::charge_normalized`, called directly by the GUI's
+    /// Convert screen for this format only.
+    ChargeNormalized,
 }
 impl Format {
-    pub const ALL: [Self; 12] = [
+    pub const ALL: [Self; 13] = [
         Self::Xy,
         Self::Ey,
         Self::OneColumn,
@@ -33,6 +43,7 @@ impl Format {
         Self::Rbs,
         Self::Nra,
         Self::Erd,
+        Self::ChargeNormalized,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -48,6 +59,7 @@ impl Format {
             Self::Rbs => "rbs",
             Self::Nra => "nra",
             Self::Erd => "erd",
+            Self::ChargeNormalized => "chg",
         }
     }
     pub fn unsupported_reason(self) -> Option<&'static str> {
@@ -57,6 +69,9 @@ impl Format {
             ),
             Self::Rbs | Self::Nra | Self::Erd => Some(
                 "scientific headers depend on missing templates, GUI defaults and unresolved numeric-text sanitization",
+            ),
+            Self::ChargeNormalized => Some(
+                "needs a second, user-chosen monitor ADC/spectrum alongside the one this function receives; use the GUI's Convert screen charge-normalization panel, or call gui_state::charge_normalized directly",
             ),
             _ => None,
         }
@@ -106,6 +121,15 @@ pub enum ConversionError {
         points: usize,
     },
     InvalidFilename,
+    /// `gui_state::charge_normalized`'s monitor ADC/spectrum accumulated
+    /// zero counts over the run, so the monitor-count ratio (and any
+    /// counts-per-µC scaling) is undefined; returned instead of dividing
+    /// by zero. See ADR 0002.
+    MonitorNoCounts,
+    /// `gui_state::charge_normalized` could not parse a channel's count
+    /// text as a finite number (via `gui_state::channel_count`); `reason`
+    /// is that function's own diagnostic message.
+    InvalidCount(String),
 }
 impl fmt::Display for ConversionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -147,6 +171,8 @@ impl fmt::Display for ConversionError {
                 f,
                 "cannot derive safe legacy filename (empty basename or occurrence beyond supported suffix letters)"
             ),
+            Self::MonitorNoCounts => write!(f, "monitor ADC recorded no counts"),
+            Self::InvalidCount(reason) => write!(f, "{reason}"),
         }
     }
 }
@@ -157,7 +183,7 @@ pub struct Selection {
     pub start: usize,
     pub end: Option<usize>,
 }
-fn bounds(s: &Spectrum, selection: Selection) -> Result<(usize, usize), ConversionError> {
+pub(crate) fn bounds(s: &Spectrum, selection: Selection) -> Result<(usize, usize), ConversionError> {
     let channels = s.channels.len();
     if channels != s.declared_channels {
         return Err(ConversionError::InconsistentSpectrum);
@@ -424,12 +450,35 @@ mod tests {
     #[test]
     fn unsupported_inventory_and_legacy_names() {
         let f = parse(b"[DATA0,1]\n1\n").unwrap();
-        for format in [Format::Pro, Format::Rbs, Format::Nra, Format::Erd] {
+        for format in [
+            Format::Pro,
+            Format::Rbs,
+            Format::Nra,
+            Format::Erd,
+            Format::ChargeNormalized,
+        ] {
             assert!(matches!(
                 convert(&f.spectra[0], format, Selection::default()),
                 Err(ConversionError::Unsupported { .. })
             ));
         }
+        // `ChargeNormalized`'s legacy prefix ("CH") must not collide with
+        // any other registered format's first two letters.
+        let prefixes: Vec<String> = Format::ALL
+            .iter()
+            .map(|f| f.name().to_ascii_uppercase()[..2.min(f.name().len())].to_string())
+            .collect();
+        let charge_prefix = &prefixes[prefixes.len() - 1];
+        assert_eq!(charge_prefix, "CH");
+        assert_eq!(
+            prefixes.iter().filter(|p| *p == charge_prefix).count(),
+            1,
+            "CH collides with another format's legacy prefix: {prefixes:?}"
+        );
+        assert_eq!(
+            legacy_filename("sample.mpa", Format::ChargeNormalized, 1).unwrap(),
+            "sample.CHb"
+        );
         assert_eq!(
             legacy_filename("sample.extra.mpa", Format::Xy, 1).unwrap(),
             "sample.XYb"

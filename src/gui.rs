@@ -1,6 +1,13 @@
 #![deny(unsafe_code)]
 #![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
-use moulinette::{chart, gui_state, lst::ListFile, mpa::MpaFile, workflow};
+use moulinette::{
+    chart,
+    conversion::Format,
+    gui_state,
+    lst::ListFile,
+    mpa::{MpaFile, Spectrum},
+    workflow,
+};
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::{cell::RefCell, path::PathBuf, rc::Rc, sync::Arc};
 // Slint-generated bindings require unsafe code; handwritten code does not.
@@ -132,6 +139,18 @@ fn joined(paths: &[PathBuf]) -> String {
         .map(|p| p.display().to_string())
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+/// Labels for the Convert screen's "Monitor ADC/spectrum" dropdown
+/// (charge normalization, ticket 08): one entry per loaded spectrum, in
+/// the same order as `spectra` itself (0-based, unlike that dropdown's
+/// "All spectra" first entry, since a monitor must be exactly one
+/// spectrum).
+fn monitor_adc_labels(spectra: &[Spectrum]) -> Vec<String> {
+    spectra
+        .iter()
+        .map(|s| format!("ADC{} · {} channels", s.adc_index, s.declared_channels))
+        .collect()
 }
 
 fn strings(values: impl IntoIterator<Item = String>) -> ModelRc<SharedString> {
@@ -826,6 +845,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     ),
                                 ));
                                 ui.set_spectrum(0);
+                                ui.set_monitor_adcs(strings(monitor_adc_labels(&file.spectra)));
+                                ui.set_monitor_adc(0);
                                 ui.set_results(
                                     if screen == SCREEN_ANALYZE {
                                         "No analysis yet."
@@ -858,6 +879,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     ),
                                 ));
                                 ui.set_spectrum(0);
+                                ui.set_monitor_adcs(strings(monitor_adc_labels(&wrapped.spectra)));
+                                ui.set_monitor_adc(0);
                                 ui.set_results("No conversion yet.".into());
                                 state.file = Some(Arc::new(wrapped));
                                 format!("Measurement ready · {count} spectra.")
@@ -956,11 +979,61 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let weak = ui.as_weak();
         let shared = shared.clone();
         let (sender, receiver) = std::sync::mpsc::channel();
-        std::thread::spawn(move || {
-            let result = workflow::render(&file, format, selection, &indices, paths)
-                .and_then(|outputs| workflow::write(outputs, Some(&dir)));
-            let _ = sender.send((dir, result));
-        });
+        // `Format::ChargeNormalized` (ticket 08) needs a second, user-
+        // chosen monitor spectrum that `workflow::render`'s per-spectrum
+        // `conversion::convert` loop has no room for (see
+        // `conversion::Format::ChargeNormalized`'s doc comment and ADR
+        // 0002), so it is written here directly via
+        // `gui_state::charge_normalized` instead of going through that
+        // loop; `workflow::filenames`/`workflow::write` (naming/writing,
+        // independent of `convert`) are reused unchanged.
+        if format == Format::ChargeNormalized {
+            let monitor_index = usize::try_from(ui.get_monitor_adc()).unwrap_or(usize::MAX);
+            let Some(monitor) = file.spectra.get(monitor_index).cloned() else {
+                report(&ui, Err("Choose a monitor ADC/spectrum".into()));
+                return;
+            };
+            let calibration = match gui_state::charge_calibration(
+                monitor.adc_index as u8,
+                ui.get_counts_per_uc().as_str(),
+            ) {
+                Ok(c) => c,
+                Err(e) => {
+                    report(&ui, Err(e));
+                    return;
+                }
+            };
+            std::thread::spawn(move || {
+                let result = (|| {
+                    let mut outputs = Vec::new();
+                    for (&index, path) in indices.iter().zip(paths) {
+                        if outputs.iter().any(|(p, _): &(PathBuf, Vec<u8>)| p == &path) {
+                            return Err("Duplicate output destination".to_string());
+                        }
+                        let spectrum = file
+                            .spectra
+                            .get(index)
+                            .ok_or("Spectrum selection is out of range")?;
+                        let bytes = gui_state::charge_normalized(
+                            spectrum,
+                            selection,
+                            &monitor,
+                            calibration,
+                        )
+                        .map_err(|e| e.to_string())?;
+                        outputs.push((path, bytes));
+                    }
+                    workflow::write(outputs, Some(&dir))
+                })();
+                let _ = sender.send((dir, result));
+            });
+        } else {
+            std::thread::spawn(move || {
+                let result = workflow::render(&file, format, selection, &indices, paths)
+                    .and_then(|outputs| workflow::write(outputs, Some(&dir)));
+                let _ = sender.send((dir, result));
+            });
+        }
         let timer = timer_convert.clone();
         let timer_callback = Rc::downgrade(&timer);
         timer.start(
