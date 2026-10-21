@@ -4,7 +4,7 @@
 use crate::{
     conversion::{Format, Selection},
     lst::{self, ListFile},
-    mpa::{MpaFile, SectionKind},
+    mpa::{MpaFile, Record, SectionKind, Spectrum},
     plot,
     rate::{self, RateBin, Roi},
     workflow,
@@ -34,6 +34,62 @@ pub fn dropped_measurement(paths: &[PathBuf], busy: bool) -> Result<&Path, Strin
 pub fn is_list_mode(path: &Path) -> bool {
     path.extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("lst"))
+}
+
+/// Build one channel-count spectrum per `AdcHeader`, counting each event's
+/// channel value (clamped to `[0, n_channels)`) into its ADC's histogram.
+/// Events with no value for a given ADC are excluded, not counted as
+/// channel 0. The result is accepted directly by `conversion::convert`'s
+/// `Spectrum` parameter.
+pub fn histogram_list_file(file: &ListFile) -> Vec<Spectrum> {
+    file.adc_headers
+        .iter()
+        .map(|header| {
+            let n = header.n_channels as usize;
+            let mut counts = vec![0u64; n];
+            let bit = usize::from(header.adc_index.saturating_sub(1));
+            if n > 0 {
+                for event in &file.events {
+                    if let Some(Some(value)) = event.adc_values.get(bit) {
+                        let channel = (*value as usize).min(n - 1);
+                        counts[channel] += 1;
+                    }
+                }
+            }
+            let channels = counts
+                .into_iter()
+                .enumerate()
+                .map(|(line, count)| Record {
+                    line,
+                    bytes: count.to_string().into_bytes(),
+                })
+                .collect();
+            let mut metadata = Vec::new();
+            if let Some(v) = header.caloff {
+                metadata.push(Record {
+                    line: 0,
+                    bytes: format!("CALOFF={v}").into_bytes(),
+                });
+            }
+            if let Some(v) = header.calfact {
+                metadata.push(Record {
+                    line: 0,
+                    bytes: format!("CALFACT={v}").into_bytes(),
+                });
+            }
+            Spectrum {
+                header: Record {
+                    line: 0,
+                    bytes: format!("[DATA0,{n}]").into_bytes(),
+                },
+                data_identifier: b"0".to_vec(),
+                adc_index: header.adc_index as usize,
+                declared_channels: n,
+                metadata,
+                channels,
+            }
+        })
+        .collect()
 }
 
 pub const MODES: [(Format, &str, &str); 8] = [
@@ -844,5 +900,79 @@ mod tests {
         fs::write(&bad, b"[ADC1]\r\nno marker").unwrap();
         assert!(load_list(&bad).unwrap_err().contains("LISTDATA"));
         fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn adc_header(adc_index: u8, n_channels: u32) -> lst::AdcHeader {
+        lst::AdcHeader {
+            adc_index,
+            caloff: None,
+            calfact: None,
+            calfact2: None,
+            calfact3: None,
+            n_channels,
+        }
+    }
+
+    fn event(adc0: Option<u16>) -> lst::Event {
+        let mut adc_values = [None; 8];
+        adc_values[0] = adc0;
+        lst::Event {
+            time_ms: 0,
+            adc_values,
+        }
+    }
+
+    #[test]
+    fn histogram_list_file_counts_known_events_and_excludes_missing_values() {
+        let file = ListFile {
+            adc_headers: vec![adc_header(1, 4)],
+            events: vec![
+                event(Some(0)),
+                event(Some(2)),
+                event(Some(2)),
+                event(None), // excluded, not counted as channel 0.
+                event(Some(0)),
+            ],
+        };
+        let spectra = histogram_list_file(&file);
+        assert_eq!(spectra.len(), 1);
+        let s = &spectra[0];
+        assert_eq!(s.adc_index, 1);
+        assert_eq!(s.declared_channels, 4);
+        assert_eq!(s.channels.len(), 4);
+        let counts: Vec<&[u8]> = s.channels.iter().map(|r| r.bytes.as_slice()).collect();
+        assert_eq!(counts, vec![b"2".as_slice(), b"0", b"2", b"0"]);
+    }
+
+    #[test]
+    fn histogram_list_file_includes_upper_boundary_channel() {
+        let file = ListFile {
+            adc_headers: vec![adc_header(1, 4)],
+            events: vec![event(Some(3))],
+        };
+        let spectra = histogram_list_file(&file);
+        let counts: Vec<&[u8]> = spectra[0]
+            .channels
+            .iter()
+            .map(|r| r.bytes.as_slice())
+            .collect();
+        assert_eq!(counts, vec![b"0".as_slice(), b"0", b"0", b"1"]);
+    }
+
+    #[test]
+    fn histogram_list_file_zero_events_is_all_zero_of_declared_length() {
+        let file = ListFile {
+            adc_headers: vec![adc_header(1, 6)],
+            events: vec![],
+        };
+        let spectra = histogram_list_file(&file);
+        assert_eq!(spectra[0].declared_channels, 6);
+        assert_eq!(spectra[0].channels.len(), 6);
+        assert!(
+            spectra[0]
+                .channels
+                .iter()
+                .all(|r| r.bytes.as_slice() == b"0")
+        );
     }
 }
