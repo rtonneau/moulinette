@@ -259,9 +259,33 @@
         "ticket": "08-charge-normalized-format",
         "commit": "c139d36"
       }
+    },
+    {
+      "at": "2026-10-21T17:21:37.765Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/09-charge-axis-analysis.md",
+        "03-implement/09-charge-axis-analysis/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "09-charge-axis-analysis"
+      }
+    },
+    {
+      "at": "2026-10-21T17:37:57.049Z",
+      "event": "ticket_done",
+      "phase": "finish-pending",
+      "files": [
+        "03-implement/09-charge-axis-analysis/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "09-charge-axis-analysis",
+        "commit": "ad53eb6"
+      }
     }
   ],
-  "current_phase": "ship",
+  "current_phase": "finish-pending",
   "git": {
     "branch": "feat/home-screen-cross-format-analysis",
     "base_branch": "main",
