@@ -4,7 +4,7 @@ use moulinette::{
     chart,
     conversion::Format,
     gui_state,
-    lst::ListFile,
+    lst::{AdcHeader, ListFile},
     mpa::{MpaFile, Spectrum},
     workflow,
 };
@@ -31,6 +31,9 @@ struct State {
     /// The in-window spectrum-with-ROI-bands chart of the last `.mpa`
     /// Analyze run.
     spectrum_chart: Option<chart::LineChart>,
+    /// The in-window rate-vs-charge chart of the last list-mode run, when
+    /// "Enable charge-axis chart" was checked (Ticket 9).
+    charge_chart: Option<chart::LineChart>,
 }
 
 /// One list-mode analysis run's outcome, sent from the worker thread
@@ -43,6 +46,10 @@ struct ListAnalysisOutcome {
     written: Result<Vec<PathBuf>, String>,
     rate_chart: Option<(chart::LineChart, Result<chart::RgbImage, String>)>,
     violin_chart: Option<(chart::LineChart, Result<chart::RgbImage, String>)>,
+    /// `Some` only when "Enable charge-axis chart" was checked (Ticket 9);
+    /// `None` leaves the panel hidden exactly like `violin_chart` does
+    /// when no time window is configured.
+    charge_chart: Option<(chart::LineChart, Result<chart::RgbImage, String>)>,
 }
 
 /// One `.mpa` Analyze-screen ROI run's outcome, sent from the worker
@@ -69,6 +76,7 @@ fn go_home(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
     hide_rate_chart(ui);
     hide_violin_chart(ui);
     hide_spectrum_chart(ui);
+    hide_charge_chart(ui);
     ui.set_busy(false);
     ui.set_loaded(false);
     ui.set_has_results(false);
@@ -151,6 +159,40 @@ fn monitor_adc_labels(spectra: &[Spectrum]) -> Vec<String> {
         .iter()
         .map(|s| format!("ADC{} · {} channels", s.adc_index, s.declared_channels))
         .collect()
+}
+
+/// Labels for the `.lst` Analyze screen's charge-axis monitor-ADC dropdown
+/// (Ticket 9): one entry per `.lst` header, in header order. Unlike
+/// `monitor_adc_labels`' `.mpa`/histogrammed-`.lst` spectrum-array
+/// indices, `.lst` has no "spectrum index" concept, so the dropdown's
+/// selected index is resolved back to `AdcHeader::adc_index` (`Roi::adc`'s
+/// 1-based convention) by `charge_axis_calibration`, not used directly.
+fn list_monitor_adc_labels(headers: &[AdcHeader]) -> Vec<String> {
+    headers
+        .iter()
+        .map(|h| format!("ADC{} · {} channels", h.adc_index, h.n_channels))
+        .collect()
+}
+
+/// Validate the `.lst` Analyze screen's "Enable charge-axis chart"
+/// checkbox and fields (Ticket 9): `None` when unchecked, so no
+/// charge-axis chart is computed; otherwise the selected monitor ADC
+/// header resolved through `gui_state::charge_calibration`, reusing the
+/// Convert screen's own charge-normalization validation (Ticket 8)
+/// unchanged.
+fn charge_axis_calibration(
+    ui: &MainWindow,
+    headers: &[AdcHeader],
+) -> Result<Option<gui_state::ChargeCalibration>, String> {
+    if !ui.get_charge_axis_enabled() {
+        return Ok(None);
+    }
+    let index = usize::try_from(ui.get_charge_axis_monitor_adc()).unwrap_or(usize::MAX);
+    let header = headers
+        .get(index)
+        .ok_or("Choose a monitor ADC for the charge-axis chart")?;
+    gui_state::charge_calibration(header.adc_index, ui.get_charge_axis_counts_per_uc().as_str())
+        .map(Some)
 }
 
 fn strings(values: impl IntoIterator<Item = String>) -> ModelRc<SharedString> {
@@ -467,6 +509,135 @@ fn install_violin_chart(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
     });
 }
 
+fn hide_charge_chart(ui: &MainWindow) {
+    ui.set_charge_chart_ready(false);
+    ui.set_charge_chart_tooltip("".into());
+}
+
+fn show_charge_chart(ui: &MainWindow, chart: &mut chart::LineChart) -> Result<(), String> {
+    let image = chart.render()?;
+    ui.set_charge_chart(image.to_slint_image());
+    ui.set_charge_chart_ready(true);
+    Ok(())
+}
+
+/// Size the charge-axis chart's buffer to the displaying area's size, like
+/// `fit_rate_chart`.
+fn fit_charge_chart(
+    ui: &MainWindow,
+    chart: &mut chart::LineChart,
+    width: f32,
+    height: f32,
+) -> Result<(), String> {
+    if !(width > 0. && height > 0.) {
+        return Ok(());
+    }
+    let scale = ui.window().scale_factor();
+    let resized = chart.set_size(
+        (width * scale).round() as u32,
+        (height * scale).round() as u32,
+    );
+    if resized || chart.area().is_none() {
+        show_charge_chart(ui, chart)?;
+    }
+    Ok(())
+}
+
+/// Show the tooltip and marker for the data point nearest to `(x, y)`,
+/// like `hover_rate_chart`.
+fn hover_charge_chart(ui: &MainWindow, chart: &chart::LineChart, x: f32, y: f32, w: f32, h: f32) {
+    let element = (f64::from(w), f64::from(h));
+    let cursor = chart::element_to_buffer((f64::from(x), f64::from(y)), element, chart.size());
+    match chart.nearest(cursor) {
+        Some(hover) => {
+            let (mx, my) = chart::buffer_to_element(hover.pixel, element, chart.size());
+            ui.set_charge_chart_marker_x(mx as f32);
+            ui.set_charge_chart_marker_y(my as f32);
+            ui.set_charge_chart_tooltip(chart.tooltip(&hover).into());
+        }
+        None => ui.set_charge_chart_tooltip("".into()),
+    }
+}
+
+/// Wire the charge-axis chart area's resize/zoom/pan/hover/reset callbacks
+/// to `State::charge_chart`, exactly like `install_rate_chart` does for
+/// the rate-vs-time chart. Only the in-window view changes: the CSV/PNG
+/// files of the run are unaffected by this chart existing.
+fn install_charge_chart(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
+    fn with_chart(
+        weak: &slint::Weak<MainWindow>,
+        shared: &Rc<RefCell<State>>,
+        f: impl FnOnce(&MainWindow, &mut chart::LineChart) -> Result<(), String>,
+    ) {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        let mut state = shared.borrow_mut();
+        let Some(chart) = state.charge_chart.as_mut() else {
+            return;
+        };
+        if let Err(e) = f(&ui, chart) {
+            report(&ui, Err(format!("Cannot draw the charge-axis chart: {e}")));
+        }
+    }
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_charge_chart_resized(move |w, h| {
+        with_chart(&weak, &state, |ui, chart| fit_charge_chart(ui, chart, w, h));
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_charge_chart_zoom(move |x, y, delta, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_charge_chart(ui, chart, w, h)?;
+            let cursor = chart::element_to_buffer(
+                (f64::from(x), f64::from(y)),
+                (f64::from(w), f64::from(h)),
+                chart.size(),
+            );
+            chart.zoom(cursor, (-f64::from(delta) * ZOOM_RATE).exp());
+            show_charge_chart(ui, chart)?;
+            hover_charge_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_charge_chart_pan(move |from_x, from_y, to_x, to_y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_charge_chart(ui, chart, w, h)?;
+            let element = (f64::from(w), f64::from(h));
+            let from = chart::element_to_buffer(
+                (f64::from(from_x), f64::from(from_y)),
+                element,
+                chart.size(),
+            );
+            let to =
+                chart::element_to_buffer((f64::from(to_x), f64::from(to_y)), element, chart.size());
+            chart.pan(from, to);
+            show_charge_chart(ui, chart)
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_charge_chart_hover(move |x, y, w, h| {
+        with_chart(&weak, &state, |ui, chart| {
+            fit_charge_chart(ui, chart, w, h)?;
+            hover_charge_chart(ui, chart, x, y, w, h);
+            Ok(())
+        });
+    });
+
+    let (weak, state) = (ui.as_weak(), shared.clone());
+    ui.on_charge_chart_reset(move || {
+        with_chart(&weak, &state, |ui, chart| {
+            chart.reset();
+            ui.set_charge_chart_tooltip("".into());
+            show_charge_chart(ui, chart)
+        });
+    });
+}
+
 fn hide_spectrum_chart(ui: &MainWindow) {
     ui.set_spectrum_chart_ready(false);
     ui.set_spectrum_chart_tooltip("".into());
@@ -743,6 +914,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         hide_rate_chart(&ui);
         hide_violin_chart(&ui);
         hide_spectrum_chart(&ui);
+        hide_charge_chart(&ui);
         ui.set_filename(
             path.file_name()
                 .unwrap_or_default()
@@ -889,6 +1061,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 let count = file.events.len();
                                 ui.set_inspection(gui_state::list_inspection(&file).into());
                                 ui.set_results("No analysis yet.".into());
+                                // Charge-axis chart (Ticket 9): reset the
+                                // checkbox and repopulate the monitor-ADC
+                                // dropdown for the newly loaded file's own
+                                // headers, so a stale selection from a
+                                // previous file is never carried over.
+                                ui.set_charge_axis_enabled(false);
+                                ui.set_charge_axis_monitor_adcs(strings(list_monitor_adc_labels(
+                                    &file.adc_headers,
+                                )));
+                                ui.set_charge_axis_monitor_adc(0);
                                 state.list = Some(Arc::new(file));
                                 format!("List-mode file ready · {count} events.")
                             }
@@ -1148,6 +1330,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     return;
                 }
             };
+            let charge_calibration = match charge_axis_calibration(&ui, &file.adc_headers) {
+                Ok(c) => c,
+                Err(e) => {
+                    report(&ui, Err(e));
+                    return;
+                }
+            };
             ui.set_busy(true);
             ui.set_error(false);
             ui.set_status("Computing rates and rendering plots…".into());
@@ -1156,8 +1345,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ui.set_warnings(gui_state::LIST_MODE_WARNINGS.into());
             hide_rate_chart(&ui);
             hide_violin_chart(&ui);
+            hide_charge_chart(&ui);
             shared.borrow_mut().rate_chart = None;
             shared.borrow_mut().violin_chart = None;
+            shared.borrow_mut().charge_chart = None;
             let weak = ui.as_weak();
             let shared = shared.clone();
             let (sender, receiver) = std::sync::mpsc::channel();
@@ -1178,11 +1369,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             let violin_image = violin_chart.render();
                             Some((violin_chart, violin_image))
                         };
+                        let charge_chart = charge_calibration.map(|calibration| {
+                            let charge_series = gui_state::charge_axis_series(
+                                &file,
+                                &series,
+                                params.dt_ms,
+                                calibration,
+                            );
+                            let x_desc = gui_state::charge_axis_label(calibration);
+                            let mut charge_chart =
+                                chart::LineChart::rate_vs_charge(&charge_series, &x_desc);
+                            let charge_image = charge_chart.render();
+                            (charge_chart, charge_image)
+                        });
                         ListAnalysisOutcome {
                             output_dir: params.output_dir,
                             written,
                             rate_chart: Some((rate_chart, rate_image)),
                             violin_chart,
+                            charge_chart,
                         }
                     }
                     Err(e) => ListAnalysisOutcome {
@@ -1190,6 +1395,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         written: Err(e),
                         rate_chart: None,
                         violin_chart: None,
+                        charge_chart: None,
                     },
                 };
                 let _ = sender.send(outcome);
@@ -1230,6 +1436,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         written,
                         rate_chart,
                         violin_chart,
+                        charge_chart,
                     } = outcome;
                     // The charts show the computed series even when writing
                     // the files failed (e.g. an output already exists).
@@ -1253,6 +1460,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         Some((_, Err(e))) => Some(e),
                         None => None,
                     };
+                    let charge_chart_error = match charge_chart {
+                        Some((chart, Ok(image))) => {
+                            shared.borrow_mut().charge_chart = Some(chart);
+                            ui.set_charge_chart(image.to_slint_image());
+                            ui.set_charge_chart_ready(true);
+                            None
+                        }
+                        Some((_, Err(e))) => Some(e),
+                        None => None,
+                    };
                     match written {
                         Ok(paths) => {
                             ui.set_results(joined(&paths).into());
@@ -1268,6 +1485,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             if let Some(e) = violin_chart_error {
                                 message.push_str(&format!(
                                     " The in-window violin chart could not be drawn: {e}"
+                                ));
+                            }
+                            if let Some(e) = charge_chart_error {
+                                message.push_str(&format!(
+                                    " The in-window charge-axis chart could not be drawn: {e}"
                                 ));
                             }
                             report(&ui, Ok(message));
@@ -1407,6 +1629,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     install_rate_chart(&ui, &state);
     install_violin_chart(&ui, &state);
     install_spectrum_chart(&ui, &state);
+    install_charge_chart(&ui, &state);
 
     let weak = ui.as_weak();
     ui.on_open_directory(move || {

@@ -425,6 +425,41 @@ impl LineChart {
         )
     }
 
+    /// The in-window charge-axis counterpart of `rate_vs_time` (Ticket 9):
+    /// the same per-ROI series shape, but each point's x-value is already
+    /// the running monitor-ADC count (or implied µC) accumulated up to that
+    /// bin's end time rather than elapsed time, as paired by
+    /// `gui_state::charge_axis_series`. `x_desc` names that quantity
+    /// ("Monitor ADC{n} cumulative counts" when uncalibrated, "Charge
+    /// [µC]" when a counts-per-µC calibration is set); the y-axis stays
+    /// "Acquisition Rate [Yield/s]" like `rate_vs_time`.
+    pub fn rate_vs_charge(series: &[(String, Vec<(f64, f64)>)], x_desc: &str) -> LineChart {
+        let x_max = series
+            .iter()
+            .flat_map(|(_, points)| points.iter().map(|&(x, _)| x))
+            .fold(0f64, f64::max);
+        let y_max = series
+            .iter()
+            .flat_map(|(_, points)| points.iter().map(|&(_, y)| y))
+            .fold(0f64, f64::max);
+        LineChart::new(
+            "Acquisition rate vs. charge",
+            x_desc,
+            "Acquisition Rate [Yield/s]",
+            series.to_vec(),
+            ViewRange {
+                x: AxisRange {
+                    min: 0.0,
+                    max: x_max.max(1.0),
+                },
+                y: AxisRange {
+                    min: 0.0,
+                    max: (y_max * 1.1).max(1.0),
+                },
+            },
+        )
+    }
+
     pub fn view(&self) -> ViewRange {
         self.view
     }
@@ -894,6 +929,50 @@ mod tests {
         let tooltip = chart.tooltip(&hover);
         assert!(tooltip.contains("0-10"), "{tooltip}");
         assert!(tooltip.contains("Density:"), "{tooltip}");
+    }
+
+    #[test]
+    fn rate_vs_charge_chart_uses_given_x_desc_and_series() {
+        let series = vec![(
+            "roi-a".to_string(),
+            vec![(2.0, 4.0), (4.0, 0.0)],
+        )];
+        let mut chart = LineChart::rate_vs_charge(&series, "Charge [\u{b5}C]");
+        assert_eq!(chart.view(), view((0.0, 4.0), (0.0, 4.4)));
+        chart.render().unwrap();
+        let area = chart.area().unwrap();
+        let point = data_to_pixel(&chart.view(), &area, (2.0, 4.0));
+        let hover = chart.nearest(point).unwrap();
+        assert_eq!((hover.series, hover.x, hover.y), ("roi-a", 2.0, 4.0));
+        let tooltip = chart.tooltip(&hover);
+        assert!(tooltip.contains("Charge [\u{b5}C]: 2"), "{tooltip}");
+    }
+
+    #[test]
+    fn rate_vs_charge_chart_reuses_the_same_line_chart_pan_zoom_hover() {
+        // Same shared pan/zoom/reset/area behaviour as every other
+        // `LineChart` constructor (`rate_vs_time`, `spectrum_with_bands`,
+        // `violin`): there is only one implementation for all of them to
+        // call.
+        let mut chart = LineChart::rate_vs_charge(
+            &[("roi-a".to_string(), vec![(1.0, 2.0), (3.0, 4.0), (5.0, 1.0)])],
+            "Charge [\u{b5}C]",
+        );
+        chart.render().unwrap();
+        let area = chart.area().unwrap();
+        let home = chart.view();
+        let cursor = (
+            area.left + 0.3 * (area.right - area.left),
+            area.top + 0.3 * (area.bottom - area.top),
+        );
+        chart.zoom(cursor, 0.5);
+        assert_ne!(chart.view(), home, "zoom narrows the shared view state");
+        chart.render().unwrap();
+        chart.pan(cursor, (cursor.0 + 5.0, cursor.1 + 5.0));
+        chart.render().unwrap();
+        assert!(chart.area().is_some(), "render always records the plot area");
+        chart.reset();
+        assert_eq!(chart.view(), home, "reset returns to the home view");
     }
 
     #[test]

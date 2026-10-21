@@ -105,6 +105,17 @@ export component MainWindow inherits Window {
     in property <[string]> monitor-adcs;
     in-out property <int> monitor-adc;
     in-out property <string> counts-per-uc;
+    // Charge-axis chart (ticket 09): an opt-in extra in-window chart on
+    // the `.lst` Analyze panel, plotting each ROI's existing time-binned
+    // rate against a monitor ADC's running cumulative count (or implied
+    // µC, when calibrated) instead of elapsed time. Reuses `ChargeCalibration`/
+    // `charge_calibration` (ticket 08); never written to a file, unlike
+    // `monitor-adcs`/`monitor-adc`/`counts-per-uc` above, which still
+    // belong to the Convert screen's charge-normalized output format.
+    in-out property <bool> charge-axis-enabled;
+    in property <[string]> charge-axis-monitor-adcs;
+    in-out property <int> charge-axis-monitor-adc;
+    in-out property <string> charge-axis-counts-per-uc;
     in property <string> description;
     in property <string> inspection;
     in property <string> preview;
@@ -172,6 +183,19 @@ export component MainWindow inherits Window {
     callback violin-chart-pan(float, float, float, float, float, float);
     callback violin-chart-hover(float, float, float, float);
     callback violin-chart-reset();
+    // Interactive charge-axis chart (ticket 09), shown only once "Enable
+    // charge-axis chart" is checked and an analysis run has completed;
+    // same wiring as `violin-chart` above.
+    in property <image> charge-chart;
+    in property <bool> charge-chart-ready;
+    in property <string> charge-chart-tooltip;
+    in property <float> charge-chart-marker-x;
+    in property <float> charge-chart-marker-y;
+    callback charge-chart-resized(float, float);
+    callback charge-chart-zoom(float, float, float, float, float);
+    callback charge-chart-pan(float, float, float, float, float, float);
+    callback charge-chart-hover(float, float, float, float);
+    callback charge-chart-reset();
     callback go-home();
     callback pick-convert();
     callback pick-analyze();
@@ -293,6 +317,18 @@ export component MainWindow inherits Window {
                     alignment: start;
                     Button { text: "Add time window"; enabled: !root.busy; clicked => { root.add-time-window(); } }
                 }
+                // Charge-axis chart (ticket 09): opt-in, in-window only.
+                // Reuses `ChargeCalibration`/`charge_calibration` (ticket
+                // 08); never changes the CSV/PNG files above.
+                CheckBox { text: "Enable charge-axis chart"; checked <=> root.charge-axis-enabled; enabled: !root.busy; toggled => { root.settings-changed(); } }
+                if root.charge-axis-enabled: VerticalLayout {
+                    spacing: 8px;
+                    Text { text: "Plots each ROI's rate against a monitor ADC's running count (or implied µC) instead of time, in-window only."; color: root.muted; wrap: word-wrap; font-size: 12px; }
+                    Text { text: "Monitor ADC"; color: root.muted; }
+                    ComboBox { model: root.charge-axis-monitor-adcs; current-index <=> root.charge-axis-monitor-adc; enabled: root.loaded && !root.busy; selected => { root.settings-changed(); } }
+                    Text { text: "Counts per µC (optional)"; color: root.muted; }
+                    LineEdit { text <=> root.charge-axis-counts-per-uc; placeholder-text: "Leave blank for a dimensionless running count"; enabled: !root.busy; edited => { root.settings-changed(); } }
+                }
                 Text { text: "Output directory"; color: root.muted; }
                 HorizontalLayout {
                     LineEdit { text <=> root.output-path; enabled: !root.busy; edited => { root.settings-changed(); } }
@@ -385,6 +421,32 @@ export component MainWindow inherits Window {
                     zoom(x, y, delta, w, h) => { root.violin-chart-zoom(x, y, delta, w, h); }
                     pan(fx, fy, tx, ty, w, h) => { root.violin-chart-pan(fx, fy, tx, ty, w, h); }
                     hover(x, y, w, h) => { root.violin-chart-hover(x, y, w, h); }
+                }
+            }
+        }
+        // In-window charge-axis chart (ticket 09), shown only once "Enable
+        // charge-axis chart" is checked and a run has completed; a purely
+        // additional view, like `violin-chart` above — the rate-vs-time
+        // chart, CSV and PNG outputs are unaffected by this panel.
+        if root.screen != 0 && root.list-mode && root.charge-chart-ready: Panel {
+            dark: root.dark;
+            VerticalLayout {
+                padding: 16px; spacing: 8px;
+                HorizontalLayout {
+                    Text { text: "Rate vs. charge"; color: root.ink; font-size: 18px; font-weight: 600; vertical-alignment: center; }
+                    Button { text: "Reset view"; clicked => { root.charge-chart-reset(); } }
+                }
+                Text { text: "Scroll to zoom around the cursor (over an axis to zoom that axis only), drag to pan, hover for a point's exact values."; color: root.muted; wrap: word-wrap; font-size: 12px; }
+                InteractiveChart {
+                    accessible-label: "Rate vs. charge chart";
+                    chart-image: root.charge-chart;
+                    chart-tooltip: root.charge-chart-tooltip;
+                    marker-x: root.charge-chart-marker-x;
+                    marker-y: root.charge-chart-marker-y;
+                    resized(w, h) => { root.charge-chart-resized(w, h); }
+                    zoom(x, y, delta, w, h) => { root.charge-chart-zoom(x, y, delta, w, h); }
+                    pan(fx, fy, tx, ty, w, h) => { root.charge-chart-pan(fx, fy, tx, ty, w, h); }
+                    hover(x, y, w, h) => { root.charge-chart-hover(x, y, w, h); }
                 }
             }
         }

@@ -987,6 +987,72 @@ pub fn charge_normalized(
     Ok(out)
 }
 
+/// Pair each ROI's time-binned rate (`series`, as computed by
+/// `rate_series`) with `calibration.monitor_adc`'s own running cumulative
+/// count (or implied µC, when `calibration.counts_per_uc` is set),
+/// accumulated up to each bin's end time, for the in-window charge-axis
+/// chart (`chart::LineChart::rate_vs_charge`, Ticket 9).
+///
+/// `rate::time_binned_rate`'s own doc comment establishes the key fact
+/// this relies on: for a shared `start_ms` (`0`) and `dt_ms`, with
+/// `end_ms: None`, the number of bins is resolved from the maximum
+/// `time_ms` over ALL events, not filtered by ADC — so calling it here for
+/// the monitor's whole spectrum (`roi: None`) with the same `dt_ms`
+/// `rate_series` used to build `series` always yields exactly as many bins
+/// as every ROI's own series, aligned bin-for-bin by index. No
+/// time-matching is needed: each ROI bin `i` simply pairs with the
+/// monitor's bin `i`.
+///
+/// Each bin's x-value is an inclusive running sum of the monitor's own
+/// bin counts `0..=i` ("the cumulative count up to that bin's end time"),
+/// mirroring `charge_normalized`'s None/Some(cpu) distinction: `None`
+/// leaves it a dimensionless running count, `Some(cpu)` divides the
+/// running count by `cpu` to read as running µC (ADR 0002).
+pub fn charge_axis_series(
+    file: &ListFile,
+    series: &[(String, Vec<RateBin>)],
+    dt_ms: u64,
+    calibration: ChargeCalibration,
+) -> Vec<(String, Vec<(f64, f64)>)> {
+    let monitor_bins =
+        rate::time_binned_rate(&file.events, calibration.monitor_adc, None, 0, None, dt_ms);
+    let mut cumulative = 0u64;
+    let x: Vec<f64> = monitor_bins
+        .iter()
+        .map(|bin| {
+            cumulative += bin.counts;
+            match calibration.counts_per_uc {
+                Some(cpu) => cumulative as f64 / cpu,
+                None => cumulative as f64,
+            }
+        })
+        .collect();
+    series
+        .iter()
+        .map(|(name, bins)| {
+            (
+                name.clone(),
+                bins.iter().zip(&x).map(|(bin, &x)| (x, bin.rate)).collect(),
+            )
+        })
+        .collect()
+}
+
+/// X-axis description for the charge-axis chart, naming the quantity
+/// `charge_axis_series` computed: a dimensionless running count of
+/// `calibration.monitor_adc`'s own counts when uncalibrated, or an implied
+/// running charge in µC when `calibration.counts_per_uc` is set (ADR
+/// 0002), matching `charge_normalized`'s same None/Some(cpu) distinction.
+pub fn charge_axis_label(calibration: ChargeCalibration) -> String {
+    match calibration.counts_per_uc {
+        Some(_) => "Charge [\u{b5}C]".to_string(),
+        None => format!(
+            "Monitor ADC{} cumulative counts",
+            calibration.monitor_adc
+        ),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1595,5 +1661,88 @@ mod tests {
             .unwrap_err();
         assert_eq!(error, conversion::ConversionError::MonitorNoCounts);
         assert_eq!(error.to_string(), "monitor ADC recorded no counts");
+    }
+
+    #[test]
+    fn charge_axis_series_pairs_each_bin_with_the_monitors_cumulative_count() {
+        let dir = temp_dir("charge-axis");
+        let input = dir.join("fixture.lst");
+        fs::write(&input, synthetic_lst()).unwrap();
+        let file = load_list(&input).unwrap();
+        // Same fixture/ROI/dt_ms as `list_mode_run_writes_outputs_and_never_overwrites`:
+        // ADC1 events at channels 25 (t=0ms), 30 (t=100ms), 10 (t=1200ms)
+        // and 99 (t=1300ms), dt_ms=1000 => two bins, [0,1000) and
+        // [1000,2000), each holding two events.
+        let params = list_mode_parameters(
+            &[fields("peak", "1", "20", "35", 0)],
+            "1000",
+            &[],
+            dir.join("out").to_str().unwrap(),
+        )
+        .unwrap();
+        let series = rate_series(&file, &params).unwrap();
+
+        // Monitor = ADC1's whole spectrum (no ROI): the ticket's required
+        // assertion, computed independently of `charge_axis_series` via
+        // `rate::time_binned_rate` directly, is that each bin's x-value
+        // equals the monitor's own cumulative count up to that bin's end
+        // time (an inclusive running sum, not exclusive-of-self).
+        let calibration = ChargeCalibration {
+            monitor_adc: 1,
+            counts_per_uc: None,
+        };
+        let monitor_bins = rate::time_binned_rate(&file.events, 1, None, 0, None, params.dt_ms);
+        let mut expected_cumulative = 0u64;
+        let expected_x: Vec<f64> = monitor_bins
+            .iter()
+            .map(|b| {
+                expected_cumulative += b.counts;
+                expected_cumulative as f64
+            })
+            .collect();
+        assert_eq!(expected_x, vec![2.0, 4.0], "two events land in each bin");
+
+        let charge_series = charge_axis_series(&file, &series, params.dt_ms, calibration);
+        assert_eq!(charge_series.len(), 1);
+        let (name, points) = &charge_series[0];
+        assert_eq!(name, "peak");
+        assert_eq!(
+            points.iter().map(|&(x, _)| x).collect::<Vec<_>>(),
+            expected_x,
+            "each bin's x-value is the monitor's cumulative count up to that bin's end time"
+        );
+        // The y-values are unchanged from `series`' own rate-vs-time bins
+        // (2 counts/s in [0,1000), 0 in [1000,2000), matching the written
+        // peak.csv in `list_mode_run_writes_outputs_and_never_overwrites`).
+        assert_eq!(*points, vec![(2.0, 2.0), (4.0, 0.0)]);
+
+        // Calibrated: counts-per-µC divides the same cumulative counts,
+        // not the rates.
+        let calibrated = ChargeCalibration {
+            monitor_adc: 1,
+            counts_per_uc: Some(2.0),
+        };
+        let charge_series = charge_axis_series(&file, &series, params.dt_ms, calibrated);
+        assert_eq!(charge_series[0].1, vec![(1.0, 2.0), (2.0, 0.0)]);
+
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn charge_axis_label_distinguishes_calibrated_and_uncalibrated_axes() {
+        assert_eq!(
+            charge_axis_label(ChargeCalibration {
+                monitor_adc: 3,
+                counts_per_uc: None,
+            }),
+            "Monitor ADC3 cumulative counts"
+        );
+        assert_eq!(
+            charge_axis_label(ChargeCalibration {
+                monitor_adc: 3,
+                counts_per_uc: Some(1.5),
+            }),
+            "Charge [\u{b5}C]"
+        );
     }
 }
