@@ -45,6 +45,17 @@ export component MainWindow inherits Window {
     in property <string> drop-hint;
     // List-mode (.lst) analysis panel, shown instead of the converter panel.
     in property <bool> list-mode;
+    // Top-level navigation: 0 = home, 1 = convert, 2 = analyze. This only
+    // decides whether the converter/list-mode panel is reachable; which
+    // panel variant renders is still decided by `list-mode` alone, since a
+    // loaded file's extension does not change when the screen changes.
+    in-out property <int> screen: 0;
+    // True once a loaded file's extension does not match the current
+    // screen (e.g. a .lst file opened on the Convert screen).
+    property <bool> mismatched: root.loaded && ((root.screen == 1 && root.list-mode) || (root.screen == 2 && !root.list-mode));
+    callback go-home();
+    callback pick-convert();
+    callback pick-analyze();
     in property <[string]> roi-units;
     in-out property <[RoiRow]> rois;
     in-out property <[TimeWindowRow]> time-windows;
@@ -79,10 +90,38 @@ export component MainWindow inherits Window {
                 Text { text: "Moulinette"; color: root.ink; font-size: 28px; font-weight: 700; }
                 Text { text: "ION BEAM ANALYSIS  /  MEASUREMENT CONVERTER"; color: root.muted; font-size: 12px; }
             }
+            if root.screen != 0: Button { text: "← Home"; clicked => { root.go-home(); } }
             CheckBox { text: "Dark theme"; checked <=> root.dark; }
         }
+        if root.screen == 0: HorizontalLayout {
+            spacing: 16px;
+            Panel {
+                dark: root.dark;
+                VerticalLayout {
+                    padding: 24px; spacing: 12px; alignment: center;
+                    Text { text: "List-mode analysis"; color: root.ink; font-size: 22px; font-weight: 700; horizontal-alignment: center; }
+                    Text { text: "Inspect .lst list-mode acquisitions: ROI rates and violin plots."; color: root.muted; wrap: word-wrap; horizontal-alignment: center; }
+                    Button { text: "Analyze"; primary: true; clicked => { root.pick-analyze(); } }
+                }
+            }
+            Panel {
+                dark: root.dark;
+                VerticalLayout {
+                    padding: 24px; spacing: 12px; alignment: center;
+                    Text { text: "Measurement conversion"; color: root.ink; font-size: 22px; font-weight: 700; horizontal-alignment: center; }
+                    Text { text: "Convert .mpa measurements to XY, EY and other legacy formats."; color: root.muted; wrap: word-wrap; horizontal-alignment: center; }
+                    Button { text: "Convert"; primary: true; clicked => { root.pick-convert(); } }
+                }
+            }
+        }
+        // Always instantiated (never inside an `if`) so `input-contains` can
+        // keep referencing it by id; collapsed to zero height and hidden
+        // instead of removed when the home screen is showing.
         input-panel := Panel {
             dark: root.dark;
+            visible: root.screen != 0;
+            max-height: root.screen != 0 ? 100000px : 0px;
+            clip: true;
             VerticalLayout {
                 padding: 16px; spacing: 8px;
                 HorizontalLayout {
@@ -93,7 +132,7 @@ export component MainWindow inherits Window {
                 Text { text: root.input-path; color: root.muted; overflow: elide; }
             }
         }
-        if root.list-mode: Panel {
+        if root.screen != 0 && !root.mismatched && root.list-mode: Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 12px;
@@ -102,7 +141,7 @@ export component MainWindow inherits Window {
                 TextEdit { text: root.inspection; read-only: true; min-height: 80px; max-height: 160px; }
             }
         }
-        if root.list-mode: Panel {
+        if root.screen != 0 && !root.mismatched && root.list-mode: Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 10px;
@@ -145,7 +184,7 @@ export component MainWindow inherits Window {
                 Text { text: "Existing files are never overwritten."; color: root.muted; font-size: 12px; }
             }
         }
-        if !root.list-mode: HorizontalLayout {
+        if root.screen != 0 && !root.mismatched && !root.list-mode: HorizontalLayout {
             spacing: 16px;
             Panel {
                 dark: root.dark;
@@ -187,7 +226,7 @@ export component MainWindow inherits Window {
                 }
             }
         }
-        Panel {
+        if root.screen != 0 && !root.mismatched: Panel {
             dark: root.dark;
             VerticalLayout {
                 padding: 16px; spacing: 8px;
@@ -199,11 +238,11 @@ export component MainWindow inherits Window {
                 Text { text: root.warnings; color: root.muted; wrap: word-wrap; font-size: 12px; }
             }
         }
-        HorizontalLayout {
+        if root.screen != 0: HorizontalLayout {
             spacing: 12px;
             if root.busy: Spinner { }
             Text { text: root.status; color: root.error ? (root.dark ? #ffaaaa : #a52626) : root.ink; wrap: word-wrap; }
-            Button {
+            if !root.mismatched: Button {
                 text: root.busy ? "Working…" : root.list-mode ? "Run list-mode analysis" : "Convert measurement";
                 primary: true; enabled: root.loaded && !root.busy;
                 clicked => { if root.list-mode { root.analyze(); } else { root.convert(); } }

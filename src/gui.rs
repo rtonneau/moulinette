@@ -18,6 +18,32 @@ struct State {
     result_directory: Option<PathBuf>,
 }
 
+/// `MainWindow::screen` values; see the property's doc comment in `main.slint`.
+const SCREEN_HOME: i32 = 0;
+const SCREEN_CONVERT: i32 = 1;
+const SCREEN_ANALYZE: i32 = 2;
+
+/// Reset to the home screen, clearing the loaded file and the busy/loaded/
+/// has-results state the same way loading a new file does.
+fn go_home(ui: &MainWindow, shared: &Rc<RefCell<State>>) {
+    *shared.borrow_mut() = State::default();
+    ui.set_screen(SCREEN_HOME);
+    ui.set_list_mode(false);
+    ui.set_busy(false);
+    ui.set_loaded(false);
+    ui.set_has_results(false);
+    ui.set_filename("No measurement selected".into());
+    ui.set_input_path("".into());
+    ui.set_output_path("".into());
+    ui.set_inspection("".into());
+    ui.set_preview("".into());
+    ui.set_results("".into());
+    ui.set_warnings("".into());
+    ui.set_drop_hint("".into());
+    ui.set_error(false);
+    ui.set_status("Open an MPA measurement or list-mode file to begin.".into());
+}
+
 /// A loaded input: an `.mpa` measurement or an `.lst` list-mode file.
 enum Measurement {
     Mpa(MpaFile),
@@ -334,6 +360,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         ui.set_loaded(true);
                         ui.set_has_results(false);
                         ui.set_warnings("".into());
+                        // The loaded file's extension (`list_mode`) may not match the
+                        // screen it was opened from; Tickets 3/5 implement that
+                        // combination, so this ticket only reports it as unsupported.
+                        let screen = ui.get_screen();
+                        let mismatched = (screen == SCREEN_CONVERT && list_mode)
+                            || (screen == SCREEN_ANALYZE && !list_mode);
                         let mut state = shared.borrow_mut();
                         state.input = path;
                         state.result_directory = None;
@@ -366,7 +398,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             }
                         };
                         refresh(&ui, &state);
-                        report(&ui, Ok(message));
+                        if mismatched {
+                            report(&ui, Ok("Not supported yet".into()));
+                        } else {
+                            report(&ui, Ok(message));
+                        }
                     }
                     Err(e) => report(&ui, Err(e)),
                 }
@@ -639,6 +675,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let weak = ui.as_weak();
+    let shared = state.clone();
+    ui.on_go_home(move || {
+        if let Some(ui) = weak.upgrade() {
+            if ui.get_busy() {
+                return;
+            }
+            go_home(&ui, &shared);
+        }
+    });
+
+    let weak = ui.as_weak();
+    ui.on_pick_convert(move || {
+        if let Some(ui) = weak.upgrade() {
+            ui.set_screen(SCREEN_CONVERT);
+        }
+    });
+
+    let weak = ui.as_weak();
+    ui.on_pick_analyze(move || {
+        if let Some(ui) = weak.upgrade() {
+            ui.set_screen(SCREEN_ANALYZE);
+        }
+    });
+
+    let weak = ui.as_weak();
     ui.on_open_directory(move || {
         if let (Some(ui), Some(dir)) = (weak.upgrade(), state.borrow().result_directory.as_ref()) {
             #[cfg(target_os = "windows")]
@@ -676,6 +737,7 @@ mod tests {
         )))
         .unwrap();
         let ui = MainWindow::new().unwrap();
+        ui.set_screen(SCREEN_CONVERT);
         ui.window().set_size(slint::LogicalSize::new(760., 400.));
         ui.show().unwrap();
         ui.set_loaded(true);
@@ -726,6 +788,7 @@ mod tests {
         )))
         .unwrap();
         let ui = MainWindow::new().unwrap();
+        ui.set_screen(SCREEN_ANALYZE);
         ui.window().set_size(slint::LogicalSize::new(760., 820.));
         ui.show().unwrap();
         let rois = Rc::new(VecModel::from(vec![blank_roi()]));
@@ -795,6 +858,7 @@ mod tests {
             "footer button runs the analysis in list mode"
         );
 
+        ui.set_screen(SCREEN_CONVERT);
         ui.set_list_mode(false);
         i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(100));
         assert_eq!(labelled("Run list-mode analysis"), 0);
@@ -802,6 +866,89 @@ mod tests {
             labelled("Convert measurement"),
             1,
             "converter footer restored"
+        );
+    }
+
+    #[test]
+    fn home_screen_cards_then_convert_after_picking_a_card() {
+        use i_slint_backend_testing::ElementHandle;
+        slint::platform::set_platform(Box::new(i_slint_backend_testing::TestingBackend::new(
+            i_slint_backend_testing::TestingBackendOptions {
+                mock_time: true,
+                renderer_name: Some("software".into()),
+                ..Default::default()
+            },
+        )))
+        .unwrap();
+        let ui = MainWindow::new().unwrap();
+        ui.window().set_size(slint::LogicalSize::new(760., 400.));
+        ui.show().unwrap();
+
+        assert_eq!(ui.get_screen(), SCREEN_HOME, "home screen by default");
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&ui, "Analyze").count(),
+            1,
+            "Analyze card present before any file loads"
+        );
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&ui, "Convert").count(),
+            1,
+            "Convert card present before any file loads"
+        );
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&ui, "Convert measurement").count(),
+            0,
+            "converter footer is not reachable from the home screen"
+        );
+
+        let weak = ui.as_weak();
+        ui.on_pick_convert(move || {
+            if let Some(ui) = weak.upgrade() {
+                ui.set_screen(SCREEN_CONVERT);
+            }
+        });
+        ElementHandle::find_by_accessible_label(&ui, "Convert")
+            .next()
+            .expect("Convert card")
+            .invoke_accessible_default_action();
+        assert_eq!(
+            ui.get_screen(),
+            SCREEN_CONVERT,
+            "picking the Convert card switches screens"
+        );
+        assert_eq!(
+            ElementHandle::find_by_accessible_label(&ui, "Analyze").count(),
+            0,
+            "home cards are gone once a screen is picked"
+        );
+
+        // Loading a .mpa file on the Convert screen must still reach the
+        // existing Convert button, exactly like
+        // scrolling_moves_drop_target_and_reaches_convert_in_short_window.
+        ui.set_loaded(true);
+        let clicked = Rc::new(std::cell::Cell::new(false));
+        let result = clicked.clone();
+        ui.on_convert(move || result.set(true));
+        ui.window()
+            .dispatch_event(slint::platform::WindowEvent::PointerScrolled {
+                position: slint::LogicalPosition::new(10., 200.),
+                delta_x: 0.,
+                delta_y: -5000.,
+            });
+        i_slint_backend_testing::mock_elapsed_time(std::time::Duration::from_millis(500));
+        let button = ElementHandle::find_by_element_type_name(&ui, "Button")
+            .last()
+            .expect("footer Convert button");
+        let position = button.absolute_position();
+        let size = button.size();
+        assert!(
+            position.y >= 0. && position.y + size.height <= 400.,
+            "Convert button must fit in viewport: {position:?} {size:?}"
+        );
+        button.mock_single_click(slint::platform::PointerEventButton::Left);
+        assert!(
+            clicked.get(),
+            "Convert must be reachable after picking the Convert card and loading an .mpa file"
         );
     }
 }
