@@ -67,6 +67,30 @@
       "detail": {
         "tickets": 9
       }
+    },
+    {
+      "at": "2026-10-21T10:34:08.825Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/01-home-screen-navigation.md",
+        "03-implement/01-home-screen-navigation/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "01-home-screen-navigation"
+      }
+    },
+    {
+      "at": "2026-10-21T10:49:55.839Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/01-home-screen-navigation/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "01-home-screen-navigation",
+        "commit": "2a8f3e7"
+      }
     }
   ],
   "current_phase": "ship",
@@ -75,5 +99,6 @@
     "base_branch": "main",
     "branch_created_at": "2026-10-21T10:33:48.169Z",
     "pr_url": null
-  }
+  },
+  "ship_mode": "subagent+inline"
 }
