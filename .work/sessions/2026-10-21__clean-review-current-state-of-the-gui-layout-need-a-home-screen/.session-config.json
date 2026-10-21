@@ -187,6 +187,30 @@
         "ticket": "05-wire-mpa-analyze",
         "commit": "72dc0b3"
       }
+    },
+    {
+      "at": "2026-10-21T11:28:52.167Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/06-interactive-chart-core.md",
+        "03-implement/06-interactive-chart-core/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "06-interactive-chart-core"
+      }
+    },
+    {
+      "at": "2026-10-21T16:40:49.667Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/06-interactive-chart-core/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "06-interactive-chart-core",
+        "commit": "85fdc5b"
+      }
     }
   ],
   "current_phase": "ship",
