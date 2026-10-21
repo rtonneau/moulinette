@@ -163,6 +163,30 @@
         "ticket": "04-mpa-roi-statistics",
         "commit": "7f976fb"
       }
+    },
+    {
+      "at": "2026-10-21T11:08:07.816Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/05-wire-mpa-analyze.md",
+        "03-implement/05-wire-mpa-analyze/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "05-wire-mpa-analyze"
+      }
+    },
+    {
+      "at": "2026-10-21T11:28:46.217Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/05-wire-mpa-analyze/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "05-wire-mpa-analyze",
+        "commit": "72dc0b3"
+      }
     }
   ],
   "current_phase": "ship",
