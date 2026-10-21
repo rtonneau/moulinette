@@ -235,6 +235,30 @@
         "ticket": "07-interactive-violin-and-spectrum",
         "commit": "ee694ee"
       }
+    },
+    {
+      "at": "2026-10-21T17:01:50.849Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/08-charge-normalized-format.md",
+        "03-implement/08-charge-normalized-format/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "08-charge-normalized-format"
+      }
+    },
+    {
+      "at": "2026-10-21T17:21:22.762Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/08-charge-normalized-format/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "08-charge-normalized-format",
+        "commit": "c139d36"
+      }
     }
   ],
   "current_phase": "ship",
