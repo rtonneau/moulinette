@@ -28,3 +28,10 @@ A named channel range on one ADC's spectrum, given either as channel bounds or a
 
 **Time-binned rate**:
 The list-mode analysis's core derived series: events within an ROI (or a whole ADC) are grouped into fixed-width time bins, producing counts per bin, a rate (counts/second), and its Poisson error, over the acquisition's internal accumulated clock (not wall-clock time).
+
+**Monitor ADC**:
+A user-chosen ADC/spectrum whose own accumulated counts stand in for integrated beam charge, since no `.mpa`/`.lst` file carries a literal charge field. See [[0002-monitor-adc-charge-proxy]].
+_Avoid_: "charge channel", "beam monitor" as a synonym — "monitor" alone is reserved for this ADC-as-charge-proxy role, distinct from the legacy MON output format (which is unrelated: a one-column-counts filename convention, not a normalization).
+
+**Net ROI count** / **Gross ROI count**:
+Two ways of summing a spectrum ROI's counts: gross is the raw sum over the ROI's channels; net subtracts a linear background drawn between the ROI's two edges before summing. Both are reported together for `.mpa` ROI statistics.

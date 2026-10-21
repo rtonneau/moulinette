@@ -1,0 +1,79 @@
+{
+  "session_id": "2026-10-21__clean-review-current-state-of-the-gui-layout-need-a-home-screen",
+  "feature_name": "Clean/review current state of the GUI layout. Need a home screen to decide whether Analyze or conversion will be performed. both .lst files and .mpa files should be convertible and analysable. Analysis part should be able to display a dynamic graph",
+  "scratch_dir": ".scratch/tests/2026-10-21__clean-review-current-state-of-the-gui-layout-need-a-home-screen",
+  "created_at": "2026-10-21T09:55:41.319Z",
+  "template_version": 2,
+  "history": [
+    {
+      "at": "2026-10-21T09:55:41.319Z",
+      "event": "session_started",
+      "phase": "grill",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-21T10:29:11.661Z",
+      "event": "grill_written",
+      "phase": "plan-not-started",
+      "files": [
+        "01-grill/resume.md"
+      ]
+    },
+    {
+      "at": "2026-10-21T10:30:15.722Z",
+      "event": "auto_started",
+      "phase": "plan-not-started",
+      "detail": {
+        "target": "finish",
+        "steps": "plan → write:plan → ship → finish",
+        "shipMode": "subagent+inline"
+      }
+    },
+    {
+      "at": "2026-10-21T10:30:23.244Z",
+      "event": "plan_started",
+      "phase": "plan",
+      "files": [
+        "02-plan/plan.md"
+      ]
+    },
+    {
+      "at": "2026-10-21T10:33:48.169Z",
+      "event": "branch_created",
+      "phase": "plan",
+      "detail": {
+        "branch": "feat/home-screen-cross-format-analysis",
+        "base": "main"
+      }
+    },
+    {
+      "at": "2026-10-21T10:33:48.213Z",
+      "event": "plan_written",
+      "phase": "ship",
+      "files": [
+        "02-plan/plan.md",
+        "02-plan/tickets/01-home-screen-navigation.md",
+        "02-plan/tickets/02-lst-histogram-spectrum.md",
+        "02-plan/tickets/03-wire-lst-convert.md",
+        "02-plan/tickets/04-mpa-roi-statistics.md",
+        "02-plan/tickets/05-wire-mpa-analyze.md",
+        "02-plan/tickets/06-interactive-chart-core.md",
+        "02-plan/tickets/07-interactive-violin-and-spectrum.md",
+        "02-plan/tickets/08-charge-normalized-format.md",
+        "02-plan/tickets/09-charge-axis-analysis.md"
+      ],
+      "detail": {
+        "tickets": 9
+      }
+    }
+  ],
+  "current_phase": "ship",
+  "git": {
+    "branch": "feat/home-screen-cross-format-analysis",
+    "base_branch": "main",
+    "branch_created_at": "2026-10-21T10:33:48.169Z",
+    "pr_url": null
+  }
+}
