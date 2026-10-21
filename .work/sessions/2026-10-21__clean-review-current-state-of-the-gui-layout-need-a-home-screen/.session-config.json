@@ -211,6 +211,30 @@
         "ticket": "06-interactive-chart-core",
         "commit": "85fdc5b"
       }
+    },
+    {
+      "at": "2026-10-21T16:41:09.555Z",
+      "event": "ticket_started",
+      "phase": "ship",
+      "files": [
+        "02-plan/tickets/07-interactive-violin-and-spectrum.md",
+        "03-implement/07-interactive-violin-and-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "07-interactive-violin-and-spectrum"
+      }
+    },
+    {
+      "at": "2026-10-21T17:01:42.542Z",
+      "event": "ticket_done",
+      "phase": "ship",
+      "files": [
+        "03-implement/07-interactive-violin-and-spectrum/commit-log.md"
+      ],
+      "detail": {
+        "ticket": "07-interactive-violin-and-spectrum",
+        "commit": "ee694ee"
+      }
     }
   ],
   "current_phase": "ship",

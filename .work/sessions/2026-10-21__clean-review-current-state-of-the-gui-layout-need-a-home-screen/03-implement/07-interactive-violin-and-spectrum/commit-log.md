@@ -1,0 +1,32 @@
+# Ticket 07: interactive-violin-and-spectrum
+
+**Status:** ✅ Done
+
+## Local Test Result
+
+`cargo test --bin moulinette-gui && cargo test roi_statistics` — both clean (4 passed in `moulinette-gui`; 5+1+1 passed across the `moulinette` lib, `moulinette-gui` and `gui_workflow` binaries for the `roi_statistics` filter). Then the full `cargo test` suite: 97 passed, 0 failed, 0 ignored (71 in the lib incl. 5 new (`chart::tests::spectrum_chart_hover_shows_channel_and_count`, `spectrum_chart_band_shades_its_channel_range_through_zoom`, `violin_chart_hover_shows_group_label_and_density`, `spectrum_and_violin_charts_reuse_the_same_line_chart_pan_zoom_hover`, `gui_state::tests::violin_series_filters_each_roi_by_window_into_labeled_groups`), 12 in the `moulinette` CLI bin, 4 in `moulinette-gui`, 3 in `tests/cli.rs`, 7 in `tests/gui_workflow.rs`). `cargo clippy --all-targets -- -D warnings` is clean.
+
+## Review Notes
+
+Checked against the Acceptance Criteria:
+
+- **Violin view uses the chart module.** `chart::LineChart::violin(groups)` (new, `src/chart.rs`) builds one Gaussian-KDE density series per named group (reusing `kde::gaussian_kde`, the exact function `plot::violin`'s PNG already uses) with density plotted against the shared value domain — a `LineChart` like any other, so it gets `zoom`/`pan`/`reset`/`nearest`/`render` for free instead of a second pan/zoom/hover implementation. `gui_state::violin_series` (new) builds one `(label, values)` group per ROI/time-window pair from `rate_series`'s output and `ListParameters::windows`, independently of `list_mode_write`'s own per-ROI grouping — `list_mode_write` and `plot.rs` are untouched (confirmed with `git diff --stat -- src/plot.rs`, zero output), so the per-ROI violin PNGs stay byte-identical. `src/gui.rs`'s `.lst` analyze thread now also renders this chart (skipped when no time windows are configured) and `ui/main.slint` shows it in a new panel, gated on `root.violin-chart-ready`.
+- **Spectrum-with-ROI-bands view upgraded from the static placeholder.** `gui_state::render_mpa_chart`/`MpaChart` (Ticket 5's static `plotters` `BitMapBackend::with_buffer` renderer) are gone; `gui_state::spectrum_chart` (renamed, same role) now builds a `chart::LineChart::spectrum_with_bands(counts, bands)` instead. `chart::Band` (new) is a shaded-rectangle spec (`AxisRange` + `Palette99` color index); `LineChart` gained a `bands: Vec<Band>` field and draws each one (clipped to the current view) every `render()` call, so bands stay visible and correctly positioned through pan/zoom rather than only at the home view. Verified with a dedicated test that samples actual rendered pixels before and after a `zoom()` call (`spectrum_chart_band_shades_its_channel_range_through_zoom`).
+- **Hover tooltips.** `LineChart::tooltip`/`nearest` were not touched — both new views reuse them as-is. For the spectrum chart this already yields "Counts\n<x_desc>: <channel>\n<y_desc>: <count>" (`x_desc` is "Channel", matching the old static chart); for the violin chart the series name is the ROI/window label and `y_desc` is "Density", so the tooltip reads "<label>\n<x_desc>: <value>\nDensity: <density>". Both are covered by dedicated tests (`spectrum_chart_hover_shows_channel_and_count`, `violin_chart_hover_shows_group_label_and_density`).
+- **Shared chart-buffer type, not duplicated pan/zoom/hover.** `spectrum_and_violin_charts_reuse_the_same_line_chart_pan_zoom_hover` (new, `src/chart.rs`) runs the identical zoom → render → pan → render → reset sequence through one generic `exercise(&mut LineChart)` helper against both a `spectrum_with_bands` chart and a `violin` chart, proving both are the same `LineChart` type driven by the one implementation of those methods.
+
+`src/gui.rs` changes: `State` gained `violin_chart`/`spectrum_chart: Option<chart::LineChart>` alongside the existing `rate_chart`; `install_violin_chart`/`install_spectrum_chart` (new) wire their chart areas' resize/zoom/pan/hover/reset callbacks exactly like `install_rate_chart` (Ticket 6), via new `hide_/show_/fit_/hover_*_chart` helper functions following the same names/shapes. The `.lst` analyze worker thread now renders up to two charts (rate always, violin when `params.windows` is non-empty) and reports both results via a new `ListAnalysisOutcome` struct (replacing a growing tuple, per this project's `clippy::type_complexity` preference for named structs); the `.mpa` analyze worker renders the spectrum chart off the UI thread via a new `MpaAnalysisOutcome` struct. The pre-existing `mpa_analyze_computes_roi_statistics_and_renders_chart` GUI test and the `tests/gui_workflow.rs` integration test were updated to render the returned `chart::LineChart` instead of reading removed `MpaChart.{rgb,width,height}` fields; no behavioral assertions changed besides that.
+
+`ui/main.slint` changes: a new reusable `InteractiveChart` component (TouchArea + Image + hover marker/tooltip, parameterized over `chart-image`/`chart-tooltip`/marker position and `resized`/`zoom`/`pan`/`hover` callbacks) factors out the markup `rate-chart-area` already had, used by two new instances — the `.mpa` panel's spectrum chart (replacing its plain static `Image`) and a new violin-chart panel on the `.lst` screen. `rate-chart-area` itself was deliberately left as its own hand-written `TouchArea` rather than migrated onto the new component, to keep this ticket's diff to additions only against Ticket 6's already-reviewed, already-tested wiring.
+
+## Blockers / Challenges
+
+None. One deliberate design call worth flagging for review: the in-window violin view renders each ROI/time-window group as a plain Gaussian-KDE density-vs-value curve (one `LineChart` series per group) rather than the static PNG's mirrored violin polygon shape. The ticket's AC only requires the in-window view to use the Ticket 6 chart module with the same pan/zoom/hover behavior and to show "group label and density value" on hover — it does not require visual parity with `plot::violin`'s PNG (which stays untouched and unchanged). A mirrored-polygon rendering was considered but would have needed a second, violin-specific hover/render path (density derived from a pixel offset rather than a plain series value), which is exactly the "duplicated pan/zoom/hover logic" Acceptance Criterion 4 asks to avoid; the density-curve approach reuses `LineChart` with zero special-casing.
+
+## Commits
+
+- ee694ee feat: interactive violin and spectrum charts via shared chart module (ticket 07)
+
+## Time Spent
+
+21m (ticket-start.js to ticket-complete.js)
